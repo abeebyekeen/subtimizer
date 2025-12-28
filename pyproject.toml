@@ -19,7 +19,7 @@ dependencies = [
     "seaborn",
     "colorcet",
     "click",  # For CLI
-    "weblogo", # For sequence logos
+    "weblogo", # For sequence logo
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
