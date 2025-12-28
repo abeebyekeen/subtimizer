@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "subtimizer"
+version = "0.1.0"
+description = "A Computational Workflow for Structure-Guided Design of Potent and Selective Kinase Peptide Substrates"
+readme = "README.md"
+authors = [
+  { name = "Abeeb Yekeen", email = "Abeeb.Yekeen@UTSouthwestern.edu" },
+]
+requires-python = ">=3.8"
+dependencies = [
+    "biopython",
+    "pandas",
+    "numpy",
+    "matplotlib",
+    "seaborn",
+    "colorcet",
+    "click",  # For CLI
+    "weblogo", # For sequence logos
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+license = "MIT"
+license-files = ["LICENSE"]
+
+[project.urls]
+Homepage = "https://github.com/abeebyekeen/subtimizer"
+
+[project.scripts]
+subtimizer = "subtimizer.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/subtimizer"]
