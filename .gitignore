@@ -1,3 +1,6 @@
+# Subtimizer example runs
+examples/
+
 # Python
 __pycache__/
 *.py[cod]

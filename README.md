@@ -74,7 +74,7 @@ While in the `subtimizer_env` environment, clone and install the package.
 2.  **Install the package**:
     We use `pip` to install Subtimizer and its basic dependencies (like pandas, biopython) into your environment.
     ```bash
-    pip install -e .
+    pip install .
     ```
 
 3.  **Verify Installation**:
