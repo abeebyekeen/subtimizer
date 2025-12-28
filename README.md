@@ -7,59 +7,62 @@
 
 ---
 
+### 0. Contents
+
+0. [Contents](#0-contents)
+1. [Overview](#overview)
+2. [Configuration](#configuration-important)
+3. [Prerequisites](#prerequisites)
+4. [Installation](#installation)
+5. [Usage](#usage)
+6. [Citation](#citation)
+
+---
+
 ## Overview
 
-**Subtimizer** provides an automated, structure-guided workflow for designing peptide substrates for kinases. It integrates **AlphaFold-Multimer** for structural modeling and **ProteinMPNN** for sequence design, streamlining the process of creating high-affinity, selective substrates.
+**Subtimizer** provides an automated, structure-guided workflow for designing peptide substrates for kinases. It integrates **AlphaFold-Multimer** for structural modeling, **ProteinMPNN** for sequence design, and **AlphaFold2**-based interface evaluation of designed substrates.
 
 
 ## Configuration (Important)
 
-The workflow uses SLURM job scripts that are generated from templates. **You should review and edit these templates** to match your HPC environment (partition names, memory limits, modules).
-
-The templates are located in: `subtimizer_pkg/src/subtimizer/templates/`
-
- Key templates to check:
-*   `fold_template.sh`: For AlphaFold folding (Step 2, Option A).
-*   `fold_parallel_template.sh`: For parallel folding (Step 2, Option B).
+The workflow uses SLURM job scripts that are generated from templates. **You should review and edit these templates** (located in: `subtimizer/src/subtimizer/templates/`) to match your HPC environment (partition names, memory limits, modules).
 
 Verify the `SBATCH` directives and `module load` commands in these files before running jobs.
 
 ## Prerequisites
 
-Before installing Subtimizer, ensure you have the following external dependencies installed and accessible:
-
 1. [Install Anaconda or Miniconda](https://www.anaconda.com/products/distribution) or [Mamba](https://mamba.readthedocs.io)
 2. [Install ColabFold](https://github.com/YoshitakaMo/localcolabfold)
-> Add ColabFold to PATH (e.g., `export PATH="/PathTo/colabfold/localcolabfold/colabfold-conda/bin:$PATH"`)
+> Add ColabFold to PATH using `export PATH="/PathTo/colabfold/localcolabfold/colabfold-conda/bin:$PATH"`
 3. [Install ProteinMPNN](https://github.com/dauparas/ProteinMPNN)
-4. [Get the af2_initial_guess code](https://github.com/nrbennet/dl_binder_design)
+> Add ProteinMPNN to PATH using `export MPNN_PATH="/PathTo/ProteinMPNN/"`
+4. [Get the code for af2_initial_guess](https://github.com/nrbennet/dl_binder_design)
+> Add code to PATH using `export DL_BINDER_DESIGN_PATH="/PathTo/dl_binder_design/af2_initial_guess/predict.py"`
 5. **SLURM**: This workflow is optimized for HPC environments using SLURM for job scheduling.
 
 ## Installation
 
 ### 1. Set Up a Conda/Mamba Environment
 
-Create a environment named `subtimizer_env` with Python 3.9:
+Create a environment named `subtimizer_env` with Python>=3.9:
 
 ```bash
 # Create the environment
 mamba create -n subtimizer_env python=3.9 -y
 
-# Activate the environment (you must do this every time you open a new terminal)
+# Activate the environment
 mamba activate subtimizer_env
 ```
 
 #### Step C: Set Up Worker Environments (Critical)
-The heavy computations (AlphaFold and ProteinMPNN) run in specific, separate environments to avoid dependency conflicts. You must create these using the provided YAML files in the repository root.
+AlphaFold and ProteinMPNN run in separate environments to avoid dependency conflicts. Create these environments using the provided YAML files in the repository root.
 
 ```bash
-# Environment for AlphaFold-Multimer and Validation
 mamba env create -f af2_des_env.yaml
 
-# Environment for ProteinMPNN
 mamba env create -f mpnn_des_env.yaml
 ```
-*Note: The `subtimizer` workflow scripts assume these environments are named `af2_des` and `mpnn_des` respectively.*
 
 ### 2. Install Subtimizer
 
@@ -68,17 +71,17 @@ While in the `subtimizer_env` environment, clone and install the package.
 1.  **Clone the repository**:
     ```bash
     git clone https://github.com/abeebyekeen/subtimizer.git
-    cd subtimizer/subtimizer_pkg
+    cd subtimizer
     ```
 
 2.  **Install the package**:
-    We use `pip` to install Subtimizer and its basic dependencies (like pandas, biopython) into your environment.
+
     ```bash
     pip install .
     ```
 
 3.  **Verify Installation**:
-    Type the following to check if it works:
+
     ```bash
     subtimizer --help
     ```
@@ -90,14 +93,13 @@ The workflow is managed through the `subtimizer` command. Use `subtimizer --help
 
 ### Common Command Line Options
 
-Most workflow commands (`fold`, `design`, `validate`, `fix-pdb`) accept the following options to control execution:
+Most subtimizer commands (`fold`, `design`, `validate`, `fix-pdb`) accept the following options to control execution:
 
 *   **`-n, --max-jobs <int>`**: Controls concurrency.
     *   Default is **4**. Increase this if you have more resources/GPUs available (e.g., `-n 8`).
     *   *Note: In `parallel` mode, this should match your SLURM script's layout.*
 *   **`--start <int>` / `--end <int>`**: Process a subset of the list.
     *   Example: `--start 1 --end 10` (Processes items 1 through 10 in your input list).
-    *   Useful for testing or splitting large workloads across multiple terminals/nodes.
 
 ### 1. Setup Project Structure
 
@@ -128,7 +130,7 @@ subtimizer setup --file example_list_of_complexes.dat --type initial
 ```
 This creates the project directories and necessary subfolders for AlphaFold.
 
-### 2. Run AlphaFold Folding (Validation/Initial Guess)
+### 2. Run AlphaFold-Multimer
 Launch AlphaFold-Multimer for the listed complexes.
 
 **Important**: This step expects a FASTA file (e.g., `AKT1_2akt1tide.fasta`) to exist inside each complex folder. See the `examples` folder for an example of how to prepare the FASTA files.
@@ -312,11 +314,10 @@ Perform interface-based Structure-Activity Relationship (ipSAE) analysis on the 
    subtimizer report --file example_list_of_complexes.dat
    ```
 
+---
+
 ## Citation
 
 If you use Subtimizer in your work, please cite:
 
 > **Yekeen A.A., Meyer C.J., McCoy M., Posner B., Westover K.D.** A Computational Workflow for Structure-Guided Design of Potent and Selective Kinase Peptide Substrates. *bioRxiv* (2025). [https://doi.org/10.1101/2025.07.04.663216](https://doi.org/10.1101/2025.07.04.663216)
-
----
-*Maintained by the Westover Lab*

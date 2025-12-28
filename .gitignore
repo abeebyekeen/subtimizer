@@ -1,6 +1,10 @@
 # Subtimizer example runs
 examples/
 
+# Exceptions (Keep these files)
+!examples/example_list_of_complexes.dat
+!examples/ALK_axltide/alk_axltide.fasta
+
 # Python
 __pycache__/
 *.py[cod]
