@@ -87,7 +87,7 @@ While in the `subtimizer_env` environment, clone and install the package.
     ```
 
 
-## Usage
+## F. Usage
 
 The workflow is managed through the `subtimizer` command. Use `subtimizer --help` to see all available commands.
 

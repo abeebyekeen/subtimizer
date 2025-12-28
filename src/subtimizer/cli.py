@@ -22,80 +22,77 @@ def main():
 @click.option('--file', '-f', type=click.Path(exists=True), required=True, help='Path to the list file containing folder names (e.g., example_list_of_complexes.dat)')
 @click.option('--type', '-t', type=click.Choice(['initial', 'mpnn', 'original']), default='initial', help='Type of setup to perform.')
 def setup(file, type):
-    """Set up folder structures for different stages of the workflow."""
+    """Set up folder structures (Step 1)."""
     setup_folders(file, type)
 
 @main.command()
 @click.option('--file', '-f', type=click.Path(exists=True), required=True, help='Path to the list file.')
 @click.option('--max-jobs', '-n', type=int, default=4, help='Maximum number of concurrent SLURM jobs.')
-@click.option('--start', type=int, default=1, help='Start index (1-based) of complexes to process.')
-@click.option('--end', type=int, default=None, help='End index (1-based) of complexes to process.')
-@click.option('--mode', type=click.Choice(['batch', 'parallel']), default='batch', help='Execution mode: batch (default) or parallel.')
-@click.option('--stage', type=click.Choice(['initial', 'validation']), default='initial', help='Folding stage: initial (Step 2) or validation (Step 7).')
+@click.option('--start', type=int, default=1, help='Start index (1-based).')
+@click.option('--end', type=int, default=None, help='End index (1-based).')
+@click.option('--mode', type=click.Choice(['batch', 'parallel']), default='batch', help='Execution mode.')
+@click.option('--stage', type=click.Choice(['initial', 'validation']), default='initial', help='Stage: initial (Structure Gen) or validation (Designed Seq Folding).')
 def fold(file, max_jobs, start, end, mode, stage):
-    """Run folding simulations (AlphaFold) for the complexes."""
+    """Run AlphaFold-Multimer (Step 2 or 7)."""
     run_folding(file, max_jobs, start, end, mode, stage)
 
 @main.command()
 @click.option('--file', '-f', type=click.Path(exists=True), required=True, help='Path to the list file.')
 @click.option('--max-jobs', '-n', type=int, default=4, help='Maximum number of concurrent SLURM jobs.')
-@click.option('--start', type=int, default=1, help='Start index (1-based) of complexes to process.')
-@click.option('--end', type=int, default=None, help='End index (1-based) of complexes to process.')
-@click.option('--mode', type=click.Choice(['batch', 'parallel']), default='batch', help='Execution mode: batch (default) or parallel.')
+@click.option('--start', type=int, default=1, help='Start index (1-based).')
+@click.option('--end', type=int, default=None, help='End index (1-based).')
+@click.option('--mode', type=click.Choice(['batch', 'parallel']), default='batch', help='Execution mode.')
 def design(file, max_jobs, start, end, mode):
-    """Run ProteinMPNN design."""
+    """Run ProteinMPNN sequence design (Step 3)."""
     run_design(file, max_jobs, start, end, mode)
 
 @main.command()
 @click.option('--file', '-f', type=click.Path(exists=True), required=True, help='Path to the list file.')
 def analyze(file):
-    """Analyze design results (Sequence Recovery)."""
+    """Analyze design results (Step 4)."""
     analyze_recovery(file)
 
 @main.command()
 @click.option('--file', '-f', type=click.Path(exists=True), required=True, help='Path to the list file.')
-@click.option('--max-jobs', '-n', type=int, default=4, help='Maximum number of concurrent SLURM jobs.')
+@click.option('--max-jobs', '-n', type=int, default=4, help='Maximum concurrent jobs.')
 def cluster(file, max_jobs):
-    """Cluster designed sequences using CD-HIT.
-    
-    Also attempts to summarize results to 'cluster_summary.dat'. 
-    Note: Summarization might require jobs to finish first.
-    """
+    """Cluster designed sequences (Step 5)."""
     run_clustering(file, max_jobs)
-    # Import locally to avoid circulars if any, but logic is in same file usually
     from subtimizer.workflow.clustering import summarize_clusters
     summarize_clusters(file)
 
 if __name__ == '__main__':
     main()
+
 @main.command()
 @click.option('--file', '-f', type=click.Path(exists=True), required=True, help='Path to the list file.')
 def prep_fold(file):
-    """Prepare clustered sequences for validation folding."""
+    """Prepare sequences for folding (Step 6)."""
     prepare_for_folding(file)
+
 @main.command()
 @click.option('--file', '-f', type=click.Path(exists=True), required=True, help='Path to the list file.')
 @click.option('--max-jobs', '-n', type=int, default=4, help='Maximum concurrent jobs.')
 @click.option('--start', type=int, default=1, help='Start index (1-based).')
 @click.option('--end', type=int, default=None, help='End index (1-based).')
 def fix_pdb(file, max_jobs, start, end):
-    """Fix PDB files for initial guess validation."""
+    """Fix and prepare input PDBs (Step 8)."""
     run_pdb_fix(file, max_jobs, start, end)
 
 @main.command(hidden=True)
 @click.option('--dir', type=click.Path(exists=True), required=True)
 def internal_fix_pdb(dir):
-    """Internal command to run PDB fixing logic."""
+    """Internal: Fix PDB logic."""
     fix_pdbs_in_dir(dir)
 
 @main.command()
 @click.option('--file', '-f', type=click.Path(exists=True), required=True, help='Path to the list file.')
 @click.option('--max-jobs', '-n', type=int, default=4, help='Maximum concurrent jobs.')
-@click.option('--binder-path', envvar='DL_BINDER_DESIGN_PATH', help='Path to dl_binder_design/af2_initial_guess/predict.py')
+@click.option('--binder-path', envvar='DL_BINDER_DESIGN_PATH', help='Path to predict.py')
 @click.option('--start', type=int, default=1, help='Start index (1-based).')
 @click.option('--end', type=int, default=None, help='End index (1-based).')
 def validate(file, max_jobs, binder_path, start, end):
-    """Run AF2 Initial Guess."""
+    """Run AF2 Initial Guess (Step 9)."""
     run_validation(file, max_jobs, binder_path, start, end)
 
 @main.command()
@@ -103,18 +100,18 @@ def validate(file, max_jobs, binder_path, start, end):
 @click.option('--start', type=int, default=1, help='Start index (1-based).')
 @click.option('--end', type=int, default=None, help='End index (1-based).')
 def report(file, start, end):
-    """Generate final reports and swarm plots."""
+    """Generate reports and plots (Step 10)."""
     run_reporting(file, start, end)
 
 @main.command()
 @click.option('--file', '-f', type=click.Path(exists=True), required=True, help='Path to the list file.')
-@click.option('--pae-cutoff', default="15", help='PAE cutoff (default: 15).')
-@click.option('--dist-cutoff', default="15", help='Distance cutoff (default: 15).')
+@click.option('--pae-cutoff', default="15", help='PAE cutoff.')
+@click.option('--dist-cutoff', default="15", help='Distance cutoff.')
 @click.option('--max-jobs', '-n', type=int, default=8, help='Maximum concurrent jobs.')
 @click.option('--start', type=int, default=1, help='Start index (1-based).')
 @click.option('--end', type=int, default=None, help='End index (1-based).')
 def ipsae(file, pae_cutoff, dist_cutoff, max_jobs, start, end):
-    """Submit job for ipSAE evaluation."""
+    """Run ipSAE evaluation (Step 12)."""
     from subtimizer.workflow.ipsae_runner import submit_ipsae_job
     submit_ipsae_job(file, pae_cutoff, dist_cutoff, max_jobs, start, end)
 
