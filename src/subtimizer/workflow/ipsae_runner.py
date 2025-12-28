@@ -12,12 +12,12 @@ import shutil
 def submit_ipsae_job(complex_list_file, pae_cutoff, dist_cutoff, max_jobs, start=1, end=None):
     """Submits a SLURM job to run the ipSAE workflow."""
     from subtimizer.manager import submit_slurm_job
-    import importlib.resources
+    from subtimizer.utils import get_template_content
     
     work_home = os.getcwd()
     abs_list_file = os.path.abspath(complex_list_file)
     
-    template_content = importlib.resources.files('subtimizer.templates').joinpath('ipsae_template.sh').read_text()
+    template_content = get_template_content('ipsae_template.sh')
 
     # If end is None, pass -1 to the template to ensure a valid integer is passed to CLI
     end_val = end if end is not None else -1

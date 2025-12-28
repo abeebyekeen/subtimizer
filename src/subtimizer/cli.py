@@ -19,6 +19,12 @@ def main():
     pass
 
 @main.command()
+def init_templates():
+    """Copy default templates to local directory for customization."""
+    from subtimizer.utils import copy_templates_to_local
+    copy_templates_to_local()
+
+@main.command()
 @click.option('--file', '-f', type=click.Path(exists=True), required=True, help='Path to the list file containing folder names (e.g., example_list_of_complexes.dat)')
 @click.option('--type', '-t', type=click.Choice(['initial', 'mpnn', 'original']), default='initial', help='Type of setup to perform.')
 def setup(file, type):

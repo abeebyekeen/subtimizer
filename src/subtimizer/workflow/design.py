@@ -61,10 +61,8 @@ def run_design(file_path: str, max_jobs: int = 4, start: int = 1, end: int = Non
 
 def _write_mpnn_script(path, complex_name, chains, fixed):
     try:
-        template_bytes = pkgutil.get_data('subtimizer.templates', 'design_template.sh')
-        if template_bytes is None:
-             raise FileNotFoundError("Template design_template.sh not found.")
-        template_content = template_bytes.decode('utf-8')
+        from subtimizer.utils import get_template_content
+        template_content = get_template_content('design_template.sh')
     except Exception as e:
         print(f"Error loading template: {e}")
         return False
@@ -79,11 +77,9 @@ def _write_mpnn_script(path, complex_name, chains, fixed):
     return True
 
 def _submit_parallel_job(file_path, max_parallel_jobs, start, end, config_file_path):
+    from subtimizer.utils import get_template_content
     try:
-        template_bytes = pkgutil.get_data('subtimizer.templates', 'design_parallel_template.sh')
-        if template_bytes is None:
-             raise FileNotFoundError("Template design_parallel_template.sh not found.")
-        template_content = template_bytes.decode('utf-8')
+        template_content = get_template_content('design_parallel_template.sh')
     except Exception as e:
         print(f"Error loading parallel template: {e}")
         return

@@ -24,11 +24,21 @@ G. [Citation](#G-citation)
 **Subtimizer** provides an automated, structure-guided workflow for designing peptide substrates for kinases. It integrates **AlphaFold-Multimer** for structural modeling, **ProteinMPNN** for sequence design, and **AlphaFold2**-based interface evaluation of designed substrates.
 
 
-## C. Configuration (Important)
+## C. Configuration (Customizing SLURM Templates)
 
-The workflow uses SLURM job scripts that are generated from templates. **You should review and edit these templates** (located in: `subtimizer/src/subtimizer/templates/`) to match your HPC environment (partition names, memory limits, modules).
+The workflow uses SLURM job scripts generated from templates. To customize these for your HPC environment (partition names, memory limits, modules):
 
-Verify the `SBATCH` directives and `module load` commands in these files before running jobs.
+1.  **Initialize local templates**:
+    ```bash
+    subtimizer init-templates
+    ```
+    This creates a `subtimizer_templates/` directory in your current folder with copies of all default scripts.
+
+2.  **Edit the templates**:
+    Open the files in `subtimizer_templates/` (e.g., `fold_template.sh`) and modify the `#SBATCH` directives or `module load` commands.
+
+3.  **Run Subtimizer**:
+    The tool will automatically detect and use your local templates instead of the package defaults.
 
 ## D. Prerequisites
 
@@ -65,20 +75,20 @@ mamba env create -f mpnn_des_env.yaml
 ```
 
 ### 2. Install Subtimizer
+While in the `subtimizer_env` environment, you can install the package via PyPI (recommended) or from source.
 
-While in the `subtimizer_env` environment, clone and install the package.
+**Option A: Install from PyPI (Recommended)**
+```bash
+pip install subtimizer
+```
 
-1.  **Clone the repository**:
-    ```bash
-    git clone https://github.com/abeebyekeen/subtimizer.git
-    cd subtimizer
-    ```
-
-2.  **Install the package**:
-
-    ```bash
-    pip install .
-    ```
+**Option B: Install from Source (For Development)**
+Use this if you want to modify the code or templates.
+```bash
+git clone https://github.com/abeebyekeen/subtimizer.git
+cd subtimizer
+pip install -e .
+```
 
 3.  **Verify Installation**:
 

@@ -78,12 +78,8 @@ def _write_worker_script(path, complex_name, template_name="fold_template.sh"):
     Writes the specific folding script for a complex using the package template.
     """
     try:
-        # Robust template loading using pkgutil (works reliably with simple packages)
-        # Note: subtimizer.templates must be importable
-        template_bytes = pkgutil.get_data('subtimizer.templates', template_name)
-        if template_bytes is None:
-             raise FileNotFoundError(f"Template {template_name} not found in package resources.")
-        template_content = template_bytes.decode('utf-8')
+        from subtimizer.utils import get_template_content
+        template_content = get_template_content(template_name)
     except Exception as e:
         print(f"Error loading template: {e}")
         return False
@@ -101,11 +97,10 @@ def _submit_parallel_job(file_path, max_parallel_jobs, start, end, template_name
     Uses fold_parallel_template.sh or fold_validation_parallel_template.sh
     """
     try:
-        # Robust template loading
-        template_bytes = pkgutil.get_data('subtimizer.templates', template_name)
-        if template_bytes is None:
-             raise FileNotFoundError(f"Template {template_name} not found.")
-        template_content = template_bytes.decode('utf-8')
+    # Robust template loading
+    from subtimizer.utils import get_template_content
+    try:
+        template_content = get_template_content(template_name)
     except Exception as e:
         print(f"Error loading parallel template: {e}")
         return
