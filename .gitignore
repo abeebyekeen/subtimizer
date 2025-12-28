@@ -3,7 +3,7 @@ examples/
 
 # Exceptions (Keep these files)
 !examples/example_list_of_complexes.dat
-!examples/ALK_axltide/alk_axltide.fasta
+!examples/ALK_axltide/alk_axltd.fasta
 
 # Python
 __pycache__/

@@ -7,30 +7,30 @@
 
 ---
 
-### 0. Contents
+### A. Contents
 
-0. [Contents](#0-contents)
-1. [Overview](#overview)
-2. [Configuration](#configuration-important)
-3. [Prerequisites](#prerequisites)
-4. [Installation](#installation)
-5. [Usage](#usage)
-6. [Citation](#citation)
+A. [Contents](#A-contents)
+B. [Overview](#B-overview)
+C. [Configuration](#C-configuration-important)
+D. [Prerequisites](#D-prerequisites)
+E. [Installation](#E-installation)
+F. [Usage](#F-usage)
+G. [Citation](#G-citation)
 
 ---
 
-## Overview
+## B. Overview
 
 **Subtimizer** provides an automated, structure-guided workflow for designing peptide substrates for kinases. It integrates **AlphaFold-Multimer** for structural modeling, **ProteinMPNN** for sequence design, and **AlphaFold2**-based interface evaluation of designed substrates.
 
 
-## Configuration (Important)
+## C. Configuration (Important)
 
 The workflow uses SLURM job scripts that are generated from templates. **You should review and edit these templates** (located in: `subtimizer/src/subtimizer/templates/`) to match your HPC environment (partition names, memory limits, modules).
 
 Verify the `SBATCH` directives and `module load` commands in these files before running jobs.
 
-## Prerequisites
+## D. Prerequisites
 
 1. [Install Anaconda or Miniconda](https://www.anaconda.com/products/distribution) or [Mamba](https://mamba.readthedocs.io)
 2. [Install ColabFold](https://github.com/YoshitakaMo/localcolabfold)
@@ -41,7 +41,7 @@ Verify the `SBATCH` directives and `module load` commands in these files before 
 > Add code to PATH using `export DL_BINDER_DESIGN_PATH="/PathTo/dl_binder_design/af2_initial_guess/predict.py"`
 5. **SLURM**: This workflow is optimized for HPC environments using SLURM for job scheduling.
 
-## Installation
+## E. Installation
 
 ### 1. Set Up a Conda/Mamba Environment
 
@@ -316,7 +316,7 @@ Perform interface-based Structure-Activity Relationship (ipSAE) analysis on the 
 
 ---
 
-## Citation
+## G. Citation
 
 If you use Subtimizer in your work, please cite:
 
