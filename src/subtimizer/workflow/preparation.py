@@ -4,8 +4,7 @@ import shutil
 
 def prepare_for_folding(file_path: str):
     """
-    Prepares designed sequences for validation folding (Step 10).
-    Ref: 14_prepare_kinase-pep_for_AFm-fold.py
+    Prepares designed sequences for validation folding (af2-initial-guess)
     """
     print(f"Preparing sequences for folding from {file_path}")
     
@@ -41,11 +40,7 @@ def prepare_for_folding(file_path: str):
             for line in f:
                 if ">" in line:
                     seq_count += 1
-                    # Parse header: >score=1.1, global_score=...
                     parts = line.strip().split(",")
-                    # Find part with score or just use index? 
-                    # Original: des_header_pick = des_header[1].strip(" ").replace("=", "")
-                    # Here we try to be robust
                     des_id = f"des_{seq_count}"
                     
                     full_header = f">{seq_count}_{header}_{des_id}"
@@ -70,14 +65,11 @@ def _extract_kinase_seq(folder):
         print(f"  No fasta found in {folder}")
         return None, None
         
-    # Assume first fasta is correct
     with open(fastas[0]) as f:
         for line in f:
             if ">" in line:
                 header = line.strip().replace(">", "")
             else:
-                # Original script assumes kinase is first part of split(":")?
-                # "kinase_seq = line.split(":")[0]"
                 parts = line.split(":")
                 return parts[0], header
     return None, None

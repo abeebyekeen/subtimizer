@@ -5,8 +5,7 @@ from subtimizer.manager import JobManager
 
 def run_clustering(file_path: str, max_jobs: int = 4):
     """
-    Orchestrates CD-HIT clustering (Step 8-9).
-    Ref: 11_batch-run_cdhit.sh and 13_get_cluster_summary.sh
+    Run CD-HIT clustering
     """
     print(f"Running filtering/clustering for complexes in {file_path}")
     
@@ -49,31 +48,16 @@ def run_clustering(file_path: str, max_jobs: int = 4):
         time.sleep(1)
 
     print("Waiting for clustering jobs to finish before summarizing...")
-    # Ideally should wait, but CD-HIT is fast. 
-    # For now, user might need to run summary separately or wait?
-    # The original script had a separate step 13.
-    # We will try to summarize, but warn if logs not found.
-    # NOTE: Since submission is async, immediate summary might fail if jobs are pending.
-    # However, to be helpful, we can attempt it or user can re-run.
-    
-    # In a real workflow, we'd wait for all jobs. 
-    # For simplicity, we just add a helper function they can call?
-    # Or we assume they run 'cluster' then wait, then maybe we add a 'summary' command?
-    # Or better: Manager handles waiting?
-    # User asked if it's implemented. It's best if we do it.
-    
-    # Let's add it but user needs to know jobs must be done.
     pass
 
 def summarize_clusters(file_path: str):
     """
     Waits for clustering jobs to finish and generates summary.
-    Ref: 13_get_cluster_summary.sh
     """
     with open(file_path, 'r') as f:
         complexes = [line.strip() for line in f if line.strip()]
     
-    # Timeout: 5 minutes per complex, maxed at 30 minutes
+    # timeout: 5 minutes per complex, maxed at 30 minutes
     num_complexes = len(complexes)
     calculated_timeout = num_complexes * 5 * 60
     max_timeout = 30 * 60
@@ -134,16 +118,13 @@ def summarize_clusters(file_path: str):
                 except Exception as e:
                     print(f"Error reading log for {folder}: {e}")
             else:
-                 pass # Squelch warning during summary generation as we warned above
+                 pass
     
     print(f"Summary written to {summary_file}")
 
 import pkgutil
 
 def _write_cdhit_script(path, complex_name):
-    """
-    Ref: 12_run-cdhit.sh
-    """
     try:
         template_bytes = pkgutil.get_data('subtimizer.templates', 'cluster_template.sh')
         if template_bytes is None:

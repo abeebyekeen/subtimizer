@@ -7,14 +7,12 @@ import pkgutil
 
 def run_validation(file_path: str, max_jobs: int = 4, binder_path: str = None, start: int = 1, end: int = None):
     """
-    Orchestrates AF2 Initial Guess validation (Steps 14-16).
-    Ref: 21_runAF2_init_guess_gpu4v_rec8.sh
+    Run AF2 Initial Guess validation
     """
     print(f"Running AF2 Init Guess for complexes in {file_path}")
     
     # Resolve binder path
     if binder_path is None:
-        # Default fallback or error
         binder_path = "path_to/dl_binder_design/af2_initial_guess/predict.py"
         print("Warning: --binder-path not provided. Using default placeholder.")
     
@@ -42,7 +40,6 @@ def run_validation(file_path: str, max_jobs: int = 4, binder_path: str = None, s
             mode = "standard"
             work_dir = standard_fold_dir
         elif os.path.exists(flat_top5_dir):
-            # We assume Flat Mode if top5complex exists in root (Original Subs)
             mode = "flat"
             work_dir = complex_name
         else:
@@ -73,7 +70,7 @@ def run_validation(file_path: str, max_jobs: int = 4, binder_path: str = None, s
 
 def _write_validation_script(path, complex_name, fold_dir, dl_binder_path):
     """
-    Writes validation script using external template.
+    Writes validation script using external template
     """
     try:
         template_bytes = pkgutil.get_data('subtimizer.templates', 'af2init_guess_validate_template.sh')

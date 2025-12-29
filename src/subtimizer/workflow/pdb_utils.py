@@ -7,8 +7,7 @@ import pkgutil
 
 def run_pdb_fix(file_path: str, max_jobs: int = 4, start: int = 1, end: int = None):
     """
-    Orchestrates PDB fixing for AF2 initial guess (Step 12).
-    Ref: 19_batch-run_pdb_fix_cpu.sh
+    PDB fixing for AF2 initial guess
     """
     print(f"Running PDB fixing for complexes in {file_path}")
     
@@ -22,9 +21,6 @@ def run_pdb_fix(file_path: str, max_jobs: int = 4, start: int = 1, end: int = No
     complexes = all_complexes[start-1 : end]
     print(f"Processing {len(complexes)} complexes (Index {start} to {end})...")
 
-    # Since this is CPU bound and fast (BioPython), we might not even need SLURM for small batches,
-    # but for consistent workflow we'll use the JobManager to submit a script that runs python.
-    
     manager = JobManager(max_jobs=max_jobs)
     
     for complex_name in complexes:
@@ -51,12 +47,11 @@ def run_pdb_fix(file_path: str, max_jobs: int = 4, start: int = 1, end: int = No
 
         # Clean and recreate input dir
         if os.path.exists(init_guess_in):
-             # rudimentary clean
-             for f in glob.glob(os.path.join(init_guess_in, "*")):
-                 try:
-                     os.remove(f)
-                 except:
-                     pass
+            for f in glob.glob(os.path.join(init_guess_in, "*")):
+                try:
+                    os.remove(f)
+                except:
+                    pass
         else:
             os.makedirs(init_guess_in, exist_ok=True)
             
@@ -108,8 +103,7 @@ def _write_fix_script(path, complex_name, target_dir):
 
 def fix_pdbs_in_dir(directory: str):
     """
-    The actual logic to fix PDBs using BioPython.
-    Replaces the PyMOL script.
+    actual logic to fix PDBs using BioPython
     """
     print(f"Processing PDBs in {directory}")
     parser = PDB.PDBParser(QUIET=True)
@@ -120,14 +114,13 @@ def fix_pdbs_in_dir(directory: str):
             structure = parser.get_structure('struct', pdb_file)
             
             # Logic: Ensure Chain IDs are standard (A, B) and Residues are renumbered?
-            # Original script: formatting chain id and res numbering.
-            # We will perform a standard renumbering:
+            # performing a standard renumbering:
             # Chain 1 -> A, Chain 2 -> B
             # Residues 1..N
             
             new_chain_ids = ['A', 'B', 'C', 'D', 'E']
             # Logic: Ensure Binder (shorter chain) is Chain A, Kinase (longer) is Chain B.
-            # And no overlapping residues.
+            # and no overlapping residues.
             
             chains = list(structure.get_chains())
             
@@ -142,13 +135,7 @@ def fix_pdbs_in_dir(directory: str):
             if len(chains) > 1:
                 # Assuming second chain is Kinase (longer)
                 kinase_len = get_len(chains[1])
-            
-            # Determine start numbers
-            # Chains[0] (Peptide) -> A
-            # Chains[1] (Kinase) -> B
-            # Default: B starts at 1. A starts at 801.
-            # If Kinase len >= 800, A starts at Kinase_len + 1 (Continuous)
-            
+                        
             start_nums = []
             
             peptide_start = 801
@@ -158,9 +145,6 @@ def fix_pdbs_in_dir(directory: str):
             start_nums.append(peptide_start) # For Chain A (Peptide)
             start_nums.append(1)             # For Chain B (Kinase)
             
-            # If more chains, just append continuous from max so far?
-            # Or just let them duplicate? Let's assume max 2 for this logic works best.
-            # For robustness, we'll continue numbering for C, D, E from max(A_end, B_end) + 1
             current_max = max(peptide_start + get_len(chains[0]), 1 + kinase_len)
 
             for k in range(2, len(chains)):
@@ -174,19 +158,7 @@ def fix_pdbs_in_dir(directory: str):
             if kinase_len >= 800:
                 peptide_start = kinase_len + 1
             
-            # Logic: Chain[0] (Peptide) -> A, start=peptide_start
-            # Chain[1] (Kinase) -> B, start=1
-            
-            # Calculate starts for all
-            # chain indices in sorted list: 0=Peptide, 1=Kinase
-            # Mapping: 0->A, 1->B
-            
-            # Temporary rename to avoid collision (e.g. swapping A <-> B)
             import random
-            
-            # First pass: Renumber residues (safe in place) and collect rename info
-            # We must be careful about modifying the chain.id while iterating if we aren't careful
-            # BioPython structure.get_chains() returns iterator. list() captures current state.
             
             # Assign Temp IDs
             for i, chain in enumerate(chains):

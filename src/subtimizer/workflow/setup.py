@@ -26,7 +26,6 @@ def setup_folders(file_path: str, setup_type: str):
         _setup_original(folders)
 
 def _setup_initial(folders):
-    """Implements logic from 0_setup_KinasePep_folders.py"""
     count = 0
     for folder in folders:
         try:
@@ -39,7 +38,6 @@ def _setup_initial(folders):
     print(f"Created {count} initial project folders.")
 
 def _setup_mpnn(folders):
-    """Implements logic from 4_setup_proteinmpnn_folders.py"""
     count = 0 
     
     # Prepare JSON content
@@ -71,18 +69,11 @@ def _setup_mpnn(folders):
     print(f"Created {count} MPNN design folders.")
 
 def _setup_original(folders):
-    """Implements logic from 24_setup_original_subs_folder.sh"""
     base_dir = "original_subs"
     os.makedirs(base_dir, exist_ok=True)
     
     count = 0
     for folder in folders:
-        # According to 24_setup_original_subs_folder.sh, it copies the original fasta files
-        # We need to find the .fasta in the source folder and copy it to original_subs
-        # This is a simplification; authentic logic might need to grab specific files.
-        # Assuming the standard pattern from the scripts:
-        
-        # NOTE: The original script tries to find *any* fasta in the directory.
         source_fastas = [f for f in os.listdir(folder) if f.endswith('.fasta')]
         
         target_dir = os.path.join(base_dir, folder)
@@ -94,7 +85,6 @@ def _setup_original(folders):
             
     print(f"Setup {count} folders in {base_dir}.")
     
-    # NEW: Copy PDBs (Simpler Path)
     print("Copying top ranked PDBs for original substrates...")
     pdb_count = 0
     import glob
@@ -115,7 +105,6 @@ def _setup_original(folders):
         # Pattern: *_relaxed_rank_001_*.pdb
         pdbs = glob.glob(os.path.join(source_pdb_dir, "*_relaxed_rank_001_*.pdb"))
         if not pdbs:
-             # Try unrelaxed if relaxed not found? Or just warn.
             print(f"Warning: No rank_001 PDB found in {source_pdb_dir}")
             continue
             

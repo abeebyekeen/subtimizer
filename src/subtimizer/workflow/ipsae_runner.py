@@ -41,17 +41,13 @@ def execute_ipsae_workflow(complex_list_file, pae_cutoff, dist_cutoff, max_jobs,
     Iterates through complexes, runs ipsae.py on PDBs/PAEs, and updates CSVs.
     """
     
-    # Handle sentinel value from CLI/Template
     if end == -1:
         end = None
     
-    # 1. Check for ipsae.py
     ipsae_exe = shutil.which("ipsae.py")
     if not ipsae_exe:
-        # Check specific paths
         pass
         
-    # Re-implment exe finding logic (abbreviated for replacement)
     ipsae_exe = shutil.which("ipsae.py")
     if not ipsae_exe:
         common_paths = [
@@ -72,7 +68,6 @@ def execute_ipsae_workflow(complex_list_file, pae_cutoff, dist_cutoff, max_jobs,
     with open(complex_list_file, 'r') as f:
         all_complexes = [line.strip() for line in f if line.strip() and not line.startswith('#')]
 
-    # Slicing
     if end is None:
         complexes = all_complexes[start-1:]
     else:
@@ -90,7 +85,6 @@ def execute_ipsae_workflow(complex_list_file, pae_cutoff, dist_cutoff, max_jobs,
 
 def _process_complex(complex_name, work_home, ipsae_exe, pae_cutoff, dist_cutoff, max_jobs):
     """Run ipSAE for a single complex."""
-    # Locate Combined CSV
     csv_file = os.path.join(work_home, "af2_init_guess", "data", complex_name, f"{complex_name}_merged_scores_pTM-ipTM_with_oriSubs.csv")
     
     if not os.path.exists(csv_file):
@@ -104,18 +98,12 @@ def _process_complex(complex_name, work_home, ipsae_exe, pae_cutoff, dist_cutoff
     for idx, row in df.iterrows():
         struct_id = str(row['id'])
         
-        # Determine paths
-        # Logic from Script 35:
-        # Standard: AFcomplex/mpnn_out_clust_fold/seqs/{id}/{id}_scores_...json
-        # Special (Round 1-5): AFcomplex/round_X/...
-        
-        # Simpler robust logic using glob
         pae_file, pdb_file = _find_files(work_home, complex_name, struct_id, row)
         
         if pae_file and pdb_file:
             tasks.append((idx, pae_file, pdb_file))
         else:
-            # Silence logging for skipped items to avoid spam, or log debug
+            # Silence logging for skipped items
             pass
 
     if not tasks:
@@ -140,10 +128,6 @@ def _process_complex(complex_name, work_home, ipsae_exe, pae_cutoff, dist_cutoff
 
 def _find_files(work_home, complex_name, struct_id, row):
     """Locate PDB and PAE files."""
-    # 1. Try Standard Location (mpnn_out_clust_fold/seqs)
-    # Note: legacy script looks in 'seqs/{id}'.
-    # My previous refactors might have flattened this?
-    # Let's check typical paths.
     
     base_dirs = [
         # Standard Designed
@@ -151,9 +135,6 @@ def _find_files(work_home, complex_name, struct_id, row):
         # Flat original
         os.path.join(work_home, complex_name, "top5complex"), 
     ]
-    
-    # Helper to clean ID
-    # struct_id like '26_tec_srctd_des_26'
     
     pae_file = None
     pdb_file = None
@@ -168,15 +149,8 @@ def _find_files(work_home, complex_name, struct_id, row):
             return jsons[0], pdbs[0]
 
     # Try Flat Original (top5complex)
-    # Original naming might be different?
-    # Usually originals are just 'rank_001_...' or copied.
-    # In my 'pdb_utils', I copy file to top5complex/{name}_rank_001...pdb
     flat_dir = base_dirs[1]
     if os.path.exists(flat_dir):
-        # We need to match the specific PDB for this ID
-        # Row usually has 'id'. For original, ID might be 'rank_1' or complex name.
-        # But 'combined' csv includes parental row.
-        # Parental row ID might be generic.
         pass
 
     # Fallback: Validation Round folders (Legacy special case)
@@ -185,10 +159,6 @@ def _find_files(work_home, complex_name, struct_id, row):
         r_dir = os.path.join(work_home, complex_name, "AFcomplex", f"round_{r}")
         if os.path.exists(r_dir):
             # Look for file matching ID
-            # struct_id might be '26_tec_srctd_des_26'
-            # Files in round_1 might be '26_tec_srctd_des_26_unrelaxed_rank_001...pdb'
-            
-            # Use 'fold' column if available (legacy special logic)
             fold_val = str(row.get('fold', struct_id)) 
             
             jsons = glob.glob(os.path.join(r_dir, f"*{fold_val}*.json"))
@@ -206,7 +176,7 @@ def _run_single_ipsae(task, ipsae_exe, pae_cutoff, dist_cutoff):
     idx, pae, pdb = task
     
     # Command: python ipsae.py <pae> <pdb> <pae_cut> <dist_cut>
-    # Note: ipsae.py usually generates output in same dir as pdb
+    # Note: ipsae.py generates output in same dir as pdb
     cmd = ["python3" if ipsae_exe.endswith(".py") else ipsae_exe, pae, pdb, str(pae_cutoff), str(dist_cutoff)]
     if ipsae_exe.endswith(".py"):
         cmd = ["python3", ipsae_exe, pae, pdb, str(pae_cutoff), str(dist_cutoff)]
@@ -233,7 +203,6 @@ def _update_csv_with_results(df, results, pae_cutoff, dist_cutoff, csv_file):
     
     update_count = 0
     for idx, pdb_path in results.items():
-        # Parsing logic from Script 35
         base = os.path.splitext(pdb_path)[0]
         txt_path = f"{base}_{p_str}_{d_str}.txt"
         
@@ -259,12 +228,11 @@ def _parse_ipsae_txt(txt_path):
                 parts = line.split()
                 if not parts: continue
                 
-                # Check metrics (approximate parsing from legacy)
+                # Check metrics
                 if "max" in parts:
                     try:
                         i = parts.index("max")
                         # parts: ... max ipSAE ipSAE_d0chn ...
-                        # Script 35 indices: i+1 to i+5
                         data['ipSAE'] = float(parts[i+1])
                         data['ipSAE_d0chn'] = float(parts[i+2])
                         data['ipSAE_d0dom'] = float(parts[i+3])

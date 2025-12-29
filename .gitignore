@@ -4,6 +4,7 @@ examples/
 # Exceptions (Keep these files)
 !examples/example_list_of_complexes.dat
 !examples/ALK_axltide/alk_axltd.fasta
+!examples/readme.txt
 
 # Python
 __pycache__/

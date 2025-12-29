@@ -5,7 +5,6 @@ import os
 class JobManager:
     """
     Manages SLURM job submissions and monitoring.
-    Replaces the bash-based 'while' loops in the original scripts.
     """
     def __init__(self, max_jobs=4, user=None):
         self.max_jobs = max_jobs
@@ -34,15 +33,10 @@ class JobManager:
                 
                 partition, name = parts[0], parts[1]
                 
-                # Filter Logic:
-                # 1. Start with GPU partition OR
-                # 2. Name is not 'bash' (interactive) AND likely related to our workflow
-                # The user requested "only count GPU jobs".
-                
                 is_gpu = "gpu" in partition.lower()
                 is_interactive = name == "bash"
                 
-                # Heuristic: Count if it's a GPU job AND not a generic bash session
+                # Count if it's a GPU job AND not a generic bash session
                 # Or if the name looks like a complex name (usually doesn't contain spaces)
                 if is_gpu and not is_interactive:
                     count += 1

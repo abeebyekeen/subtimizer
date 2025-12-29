@@ -3,8 +3,8 @@
 **A Computational Workflow for Structure-Guided Design of Potent and Selective Kinase Peptide Substrates**
 
 [![DOI](https://zenodo.org/badge/doi/10.1101/2025.07.04.663216.svg?style=svg)](http://dx.doi.org/10.1101/2025.07.04.663216)
-[![GitHub release (latest by date)](https://img.shields.io/github/v/release/abeebyekeen/subtimizer?style=flat-square)](https://github.com/abeebyekeen/subtimizer/releases)
 [![PyPI version](https://badge.fury.io/py/subtimizer.svg)](https://badge.fury.io/py/subtimizer)
+[![GitHub release (latest by date)](https://img.shields.io/github/v/release/abeebyekeen/subtimizer?style=flat-square)](https://github.com/abeebyekeen/subtimizer/releases)
 
 ---
 

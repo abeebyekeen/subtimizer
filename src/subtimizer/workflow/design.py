@@ -6,8 +6,7 @@ from subtimizer.manager import JobManager
 
 def run_design(file_path: str, max_jobs: int = 4, start: int = 1, end: int = None, mode: str = 'batch'):
     """
-    Orchestrates the ProteinMPNN design process (Step 5).
-    Replaces 5_batch-run_mpnn.sh and 7_parallel_gpu_run_mpnn_gpu4v.sh
+    Run ProteinMPNN design process
     """
     
     with open(file_path, 'r') as f:
@@ -85,7 +84,6 @@ def _submit_parallel_job(file_path, max_parallel_jobs, start, end, config_file_p
         return
 
     script_name = "run_design_parallel.sh"
-    # Ensure config path is safe for bash (escaped if needed, but abspath usually fine)
     content = template_content.format(
         file_path=os.path.abspath(file_path),
         start=start,

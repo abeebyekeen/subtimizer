@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "subtimizer"
-version = "0.2.0"
+version = "1.0.0"
 description = "A Computational Workflow for Structure-Guided Design of Potent and Selective Kinase Peptide Substrates"
 readme = "README.md"
 authors = [
@@ -19,7 +19,8 @@ dependencies = [
     "seaborn",
     "colorcet",
     "click",  # For CLI
-    "weblogo", # For sequence logo
+    "weblogo",
+    "scipy", 
 ]
 classifiers = [
     "Programming Language :: Python :: 3",

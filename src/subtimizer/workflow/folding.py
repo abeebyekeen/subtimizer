@@ -5,12 +5,11 @@ from subtimizer.manager import JobManager
 
 def run_folding(file_path: str, max_jobs: int = 4, start: int = 1, end: int = None, mode: str = 'batch', stage: str = 'initial'):
     """
-    Orchestrates the folding process (Step 3 and Step 7).
+    Execute AF-multimer/AF2-initial-guess
     mode: 'batch' (one job per complex) or 'parallel' (one job for all, multi-gpu).
-    stage: 'initial' (Step 3, generating initial structure) or 'validation' (Step 7, checking designs).
+    stage: 'initial' (generating initial structure) or 'validation' (AF2-initial-guess)
     """
     
-    # Read complexes
     with open(file_path, 'r') as f:
         all_complexes = [line.strip() for line in f if line.strip()]
 
@@ -36,12 +35,9 @@ def run_folding(file_path: str, max_jobs: int = 4, start: int = 1, end: int = No
     for complex_name in complexes:
         # Check if already done
         if stage == 'initial':
-             done_file = os.path.join(complex_name, "AFcomplex", "round_1", f"{complex_name}.done.txt") # heuristic
+            done_file = os.path.join(complex_name, "AFcomplex", "round_1", f"{complex_name}.done.txt") # heuristic
         else:
-             # Validation stage heuristic: check if structs dir has enough pdbs?
-             # Harder to verify 'done' state from outside without counting.
-             # We skip this check for validation or use a specific marker.
-             done_file = os.path.join(complex_name, "AFcomplex", "mpnn_out_clust_fold", "validation.done")
+            done_file = os.path.join(complex_name, "AFcomplex", "mpnn_out_clust_fold", "validation.done")
 
         if os.path.exists(done_file):
             print(f"{complex_name} already completed. Skipping.")

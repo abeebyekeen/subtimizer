@@ -6,13 +6,11 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import colorcet as cc
+from scipy import stats
 
 def run_reporting(file_path: str, start: int = 1, end: int = None):
     """
-    Orchestrates data merging and advanced plotting (Steps 17-18).
-    Ref: 
-      22_extract_merge_af2_init_guess_with_folding_data_rec8.py
-      32_plot_swarm_pae-inter_CSVout_with_oriSub.py
+    data merging and advanced plotting
     """
     print(f"Generating Reports for complexes in {file_path}")
     
@@ -31,33 +29,23 @@ def run_reporting(file_path: str, start: int = 1, end: int = None):
 
     print(f"Processing {len(complexes)} complexes (Range: {start}-{end if end else 'end'})...")
 
-    # 1. Merge metrics
     _merge_metrics(complexes)
     
-    # 2. Add PTM info (Implemented in _merge_metrics)
-    
-    # 3. Merge with Original Substrates (Legacy Step 17 / Script 30)
     _merge_with_original(complexes)
 
-    # 4. Add Sequences (Legacy Step 19 / Script 31)
     _add_sequences(complexes)
     
-    # 5. Scatter Plots (Legacy Script 33)
     _plot_scatter(complexes, file_path, start, end)
 
-    # 6. Swarm Plots
     _plot_swarm(complexes, file_path, start, end)
 
-    # 7. ipSAE Plots (Legacy Script 37/38)
     _plot_ipsae(complexes, file_path, start, end)
 
-    # 8. ipSAE Colored Scatter (Legacy Script 39/40)
     _plot_scatter_ipsae_colored(complexes, file_path, start, end)
 
 def _merge_metrics(complexes):
     """
     Merges AF2 scores (ipTM, pTM) with folding logs.
-    Ref: 22_extract_merge_af2_init_guess_with_folding_data_rec8.py
     """
     print("MetaData Merging...")
     work_home = os.getcwd()
@@ -71,7 +59,6 @@ def _merge_metrics(complexes):
         is_flat = False
         
         if not os.path.exists(init_guess_dir):
-            # Try Flat Path (for Original Substrates)
             flat_guess = os.path.join(complex_name, "af2_init_guess.rec8")
             if os.path.exists(flat_guess):
                 init_guess_dir = flat_guess
@@ -87,11 +74,6 @@ def _merge_metrics(complexes):
             with open(score_file) as sf:
                 lines = sf.readlines()
                 
-            # Process Header
-            # Original script manually constructs columns logic.
-            # We will use pandas if possible, but the original logic parses text manually.
-            # Let's clean parse.
-            
             for i, line in enumerate(lines):
                 parts = line.strip().split()
                 if i == 0:
@@ -104,32 +86,14 @@ def _merge_metrics(complexes):
                     # Desc format example: "design_001_unrelaxed_..."
                     design_id = description.split("_unrelaxed_")[0]
                     
-                    # Need to fetch folding log for this design
+                    # fetch folding log for this design
                     log_file = os.path.join(fold_dir, "seqs", design_id, "log.txt")
                     
                     found_log = False
                     if os.path.exists(log_file):
                          found_log = True
                     else:
-                        # Try "Look Back" logic for Original Substrates (Flat Workflow)
-                        # We might be in original_subs/complex/af2_init_guess.rec8
-                        # We need to look in ../<complex>/AFcomplex/round_*/log.txt relative to complex root?
-                        # Wait, we are in python. 'fold_dir' was set earlier.
-                        # If is_flat is True, fold_dir was set to 'mpnn_out_clust_fold' which relies on 'AFcomplex'. 
-                        # Actually in flat mode, I didn't set fold_dir to the parent.
-                        
-                        # Let's use relative paths from work_home (cwd)
-                        # CWD is usually where 'report' is run (original_subs)
-                        # complex_name is the folder.
-                        
-                        # Inspect potential parent paths (Main Project)
-                        # usually ../complex_name/AFcomplex/round_*/log.txt
-                        # We need absolute path to be safe.
-                        
                         parent_project_dir = os.path.abspath(os.path.join(work_home, "..", complex_name))
-                        
-                        # Check if that exists (we might be in main dir, so .. goes up one level too far? 
-                        # Use check: if cwd ends with "original_subs", then parent is ..
                         
                         search_roots = []
                         if "original_subs" in work_home:
@@ -140,12 +104,6 @@ def _merge_metrics(complexes):
                             for r in range(1, 6):
                                 possible_log = os.path.join(root, "AFcomplex", f"round_{r}", "log.txt")
                                 if os.path.exists(possible_log):
-                                    # We must check if this log contains our design_id (or rather, the rank_001 for it)
-                                    # For original substrates, design_id is likely the complex name or close.
-                                    # In the legacy script, it checks `if seed in i`.
-                                    # Here design_id might be "design_001" (if from af2score) OR the actual name?
-                                    # In af2score.dat for original subs, the description is usually just the name or "unrelaxed_rank..."
-                                    # Let's tentatively set log_file if exists, we will parse content next.
                                     log_file = possible_log
                                     found_log = True
                                     break
@@ -157,11 +115,8 @@ def _merge_metrics(complexes):
                     if found_log and os.path.exists(log_file):
                         with open(log_file) as lf:
                             for logline in lf:
-                                # For original substrates, we might strictly look for rank_001
+                                # For original substrates, strictly look for rank_001
                                 if "rank_001" in logline:
-                                    # Verify identity if possible?
-                                    # Legacy script checked `seed` (design_id). 
-                                    # If this is the correct log, we take it.
                                     lp = logline.strip().split()
                                     try:
                                         iptm = lp[-1].replace("ipTM=", "")
@@ -177,16 +132,8 @@ def _merge_metrics(complexes):
                     row = [design_id, fld, iptm, ptm, plddt] + parts[1:-1] 
                     merged_data.append(row)
             
-            # Create DataFrame
             import pandas as pd
             df = pd.DataFrame(merged_data[1:], columns=merged_data[0])
-            
-            # Add weighted score (Step 23 logic)
-            # headers usually: "ipTM", "pTM", "pLDDT", ...
-            # Legacy expected cols 3 and 4 -> pTM is col 3 (index 3), ipTM is col 4 (index 4)? 
-            # From Step 22 logic: headers = ["ipTM", "pTM", ...]
-            # So ipTM is 0, pTM is 1? 
-            # Let's use name-based indexing for safety.
             
             if "pTM" in df.columns and "ipTM" in df.columns:
                 try:
@@ -196,19 +143,16 @@ def _merge_metrics(complexes):
                     # 0.2 * pTM + 0.8 * ipTM
                     df["pTM_ipTM"] = (0.2 * df["pTM"] + 0.8 * df["ipTM"]).round(3)
                     
-                    # Move to position 5 if possible (legacy behavior)
+                    # Move to position 5 if possible 
                     cols = list(df.columns)
                     cols.insert(5, cols.pop(cols.index("pTM_ipTM")))
                     df = df[cols]
                 except Exception as e:
                     print(f"Warning: Could not calculate pTM_ipTM for {complex_name}: {e}")
 
-            # Write Output
             out_csv = os.path.join(init_guess_dir, f"{complex_name}_merged_scores_pTM-ipTM.csv")
             df.to_csv(out_csv, index=False)
             
-            # Copy to central data dir (Ref: 22/23)
-            # dest = f"{work_home}/af2_init_guess/data/{kinase_pep}/"
             central_dest = os.path.join(work_home, "af2_init_guess", "data", complex_name)
             os.makedirs(central_dest, exist_ok=True)
             try:
@@ -223,10 +167,8 @@ def _merge_metrics(complexes):
 def _merge_with_original(complexes):
     """
     Merges designed substrate data with original substrate data (if available).
-    Ref: 30_merge_test_subs_data_with_orig_subs.py
     """
     if "original_subs" in os.getcwd():
-        # We are likely inside original_subs, so nothing to merge with.
         return
 
     orig_subs_path = "original_subs"
@@ -237,22 +179,12 @@ def _merge_with_original(complexes):
     work_home = os.getcwd()
 
     for complex_name in complexes:
-        # 1. Designed Data Path (Central)
         designed_csv = os.path.join(work_home, "af2_init_guess", "data", complex_name, f"{complex_name}_merged_scores_pTM-ipTM.csv")
         
-        # 2. Original Data Path
-        # We expect the user to have run 'subtimizer report' inside 'original_subs'.
-        # That would place the csv in: original_subs/af2_init_guess/data/complex/
-        # OR inside the complex folder structure: original_subs/complex/AFcomplex/...
-        # Let's check both or primary location.
-        # Primary location from _merge_metrics: init_guess_dir
-        
-        # Primary location (Standard)
         orig_csv_source = os.path.join(orig_subs_path, complex_name, "AFcomplex", "mpnn_out_clust_fold", 
                                        "af2_init_guess.rec8", f"{complex_name}_merged_scores_pTM-ipTM.csv")
                                        
         if not os.path.exists(orig_csv_source):
-            # Check Flat Path (New Workflow)
             orig_csv_source = os.path.join(orig_subs_path, complex_name, "af2_init_guess.rec8", 
                                            f"{complex_name}_merged_scores_pTM-ipTM.csv")
                                        
@@ -268,10 +200,6 @@ def _merge_with_original(complexes):
             df_des = pd.read_csv(designed_csv)
             df_orig = pd.read_csv(orig_csv_source)
             
-            # Legacy Logic (Ref: 30_merge...py, line 47):
-            # "if line_no == 1: write line; break"
-            # This means it takes ONLY the first data row (Rank 1).
-            
             if not df_orig.empty:
                 # Take top row only
                 df_orig_top = df_orig.iloc[[0]]
@@ -279,10 +207,6 @@ def _merge_with_original(complexes):
             else:
                 df_final = df_des
             
-            # Save Combined
-            
-            # Save Combined
-            # Legacy Naming: {complex}_merged_scores_pTM-ipTM_with_oriSubs.csv
             out_file = os.path.join(work_home, "af2_init_guess", "data", complex_name, f"{complex_name}_merged_scores_pTM-ipTM_with_oriSubs.csv")
             df_final.to_csv(out_file, index=False)
             print(f"Created combined report: {out_file}")
@@ -292,49 +216,34 @@ def _merge_with_original(complexes):
 
 def _plot_swarm(complexes, source_file, start=1, end=None):
     """
-    Generates Swarm Plots matching legacy aesthetics.
-    Ref: 32_plot_swarm_pae-inter_CSVout_with_oriSub.py
+    Generates Swarm Plots
     """
     print("Generating Swarm Plots...")
-    import matplotlib.pyplot as plt
-    import seaborn as sns
-    import colorcet as cc
-    import pandas as pd
-    import numpy as np
-    import matplotlib.ticker as ticker
 
-    # Legacy Aesthetics
     plt.rcParams['axes.linewidth'] = 1.7
     plt.rcParams['xtick.major.width'] = 1.7
     plt.rcParams['ytick.major.width'] = 1.7
     plt.rcParams['xtick.major.size'] = 5.2
     plt.rcParams['ytick.major.size'] = 4.0
 
-    palette = sns.color_palette(cc.glasbey, n_colors=len(complexes)+10) # Enforce sufficient colors
+    palette = sns.color_palette(cc.glasbey, n_colors=len(complexes)+10)
 
     plt.figure(figsize=(6, 10))
-    
-    # We iterate and plot directly to the axes to match legacy loop style
     
     plotted_count = 0
     
     for idx, complex_name in enumerate(complexes):
-        # Locate Combined CSV (Preferred) or individual
-        # Try finding combined first
         work_home = os.getcwd()
         combined_csv = os.path.join(work_home, "af2_init_guess", "data", complex_name, f"{complex_name}_merged_scores_pTM-ipTM_with_oriSubs.csv")
         
-        # Fallback to individual if combined doesn't exist
         fallback_csv = os.path.join(work_home, "af2_init_guess", "data", complex_name, f"{complex_name}_merged_scores_pTM-ipTM.csv")
         
         csv_file = combined_csv if os.path.exists(combined_csv) else fallback_csv
         
         if not os.path.exists(csv_file):
-            # Check legacy/standard path logic just in case
             csv_file = os.path.join(work_home, complex_name, "AFcomplex", "mpnn_out_clust_fold", 
                                   "af2_init_guess.rec8", f"{complex_name}_merged_scores_pTM-ipTM.csv")
             if not os.path.exists(csv_file):
-                 # Check Flat path
                  csv_file = os.path.join(work_home, complex_name, "af2_init_guess.rec8", 
                                         f"{complex_name}_merged_scores_pTM-ipTM.csv")
                  if not os.path.exists(csv_file):
@@ -345,11 +254,6 @@ def _plot_swarm(complexes, source_file, start=1, end=None):
 
         try:
             df = pd.read_csv(csv_file)
-            
-            # Determine metric column. Legacy uses index 7.
-            # In af2score.dat: SCORE, pae_binder, pae_interaction(2)...
-            # Our merge: iptm, ptm, plddt, fold, id, pae_binder, pae_interaction(6)
-            # Let's try to find 'pae_interaction' by name.
             
             metric_col = None
             if 'pae_interaction' in df.columns:
@@ -381,16 +285,12 @@ def _plot_swarm(complexes, source_file, start=1, end=None):
             p_name = complex_name
             
             # Choose Swarm Color (Avoid Red-ish)
-            # Simple heuristic: if RGB has high Red component, pick another.
+            # if RGB has high Red component, pick another.
             swarm_color = palette[idx % len(palette)]
             if len(swarm_color) == 3 and swarm_color[0] > 0.7 and swarm_color[1] < 0.5:
                  # Shift by 10 or something arbitrary to get away from red
                  swarm_color = palette[(idx + 10) % len(palette)]
-                 
-            # Logic:
-            # If combined -> Separate Design (Swarm) vs Parental (Red Dot)
-            # If NOT combined -> All Swarm
-            
+                            
             if is_combined:
                 # Plot Design (Swarm)
                 # Assumes Last Row is Parental
@@ -412,21 +312,15 @@ def _plot_swarm(complexes, source_file, start=1, end=None):
         print("No data found for plotting.")
         return
 
-    # Final settings
     plt.xticks(fontsize=17)
     plt.yticks(fontsize=17)
     plt.ylabel('Kinase-peptide complex', fontsize=20, fontweight='bold')
     plt.xlabel('ipAE' + r' ($\AA$)', fontsize=20, fontweight='bold')
     
-    # Remove strict tick locators if they hide data, or ensure they match data range.
     ax = plt.gca()
-    # ax.xaxis.set_major_locator(ticker.MultipleLocator(4)) # Commented out to fix "no ticks" issue
-    # ax.xaxis.set_minor_locator(ticker.MultipleLocator(2))
     ax.tick_params(axis='x', which='major', length=5.2, width=1.7)
     ax.tick_params(axis='x', which='minor', length=4, width=1.4)
     
-    # Construct filename
-    # f"validation_swarmplot_{data_file_stem}_{start}_{end}.png"
     base_name = os.path.basename(source_file)
     file_stem = os.path.splitext(base_name)[0]
     end_val = end if end else "end"
@@ -439,7 +333,6 @@ def _plot_swarm(complexes, source_file, start=1, end=None):
 def _add_sequences(complexes):
     """
     Adds peptide sequence column to the final CSVs.
-    Ref: 31_extract_add_pepSEQ_to_outcsv.py
     """
     print("Adding sequences to reports...")
     from Bio import SeqIO
@@ -484,7 +377,7 @@ def _add_sequences(complexes):
     work_home = os.getcwd()
 
     for complex_name in complexes:
-        # ... (Paths setup) ...
+        # Paths setup
         combined_csv = os.path.join(work_home, "af2_init_guess", "data", complex_name, f"{complex_name}_merged_scores_pTM-ipTM_with_oriSubs.csv")
         fallback_csv = os.path.join(work_home, "af2_init_guess", "data", complex_name, f"{complex_name}_merged_scores_pTM-ipTM.csv")
         csv_file = combined_csv if os.path.exists(combined_csv) else fallback_csv
@@ -524,7 +417,7 @@ def _add_sequences(complexes):
                  
                  # 3. Original Substrate Row (Last Row Check)
                  if i == len(df) - 1:
-                     # Try finding any PDB in standard Original path
+                     # finding any PDB in standard Original path
                      std_orig = os.path.join(work_home, "original_subs", complex_name, "AFcomplex", "top5complex", "*.pdb")
                      matches_std = glob.glob(std_orig)
                      if matches_std:
@@ -554,17 +447,9 @@ def _plot_scatter(complexes, source_file, start=1, end=None):
     Generates Scatter Plots matching legacy Script 33.
     """
     print("Generating Scatter Plots...")
-    import matplotlib.pyplot as plt
-    import seaborn as sns
-    import pandas as pd
-    import numpy as np
-    import matplotlib.ticker as ticker
-
-    # Legacy Aesthetics (Script 33)
     plt.rcParams['font.family'] = 'Arial'
     plt.rcParams['axes.linewidth'] = 1.5
     
-    # Font sizes from legacy
     LABEL_SIZE = 21
     TICK_SIZE = 20
     LEGEND_SIZE = 14
@@ -605,9 +490,7 @@ def _plot_scatter(complexes, source_file, start=1, end=None):
              
              if df.empty: continue
              
-             # pLDDT Col
              plddt_col = None
-             # Legacy explicitly uses 'plddt_binder'. Prioritize it.
              for c in ['plddt_binder', 'pLDDT_binder', 'pLDDT']:
                  if c in df.columns:
                      plddt_col = c
@@ -615,18 +498,15 @@ def _plot_scatter(complexes, source_file, start=1, end=None):
              if plddt_col:
                  df[plddt_col] = pd.to_numeric(df[plddt_col], errors='coerce')
 
-             # --- Helper for plotting ---
              def setup_axis(ax):
                  ax.set_ylabel(r'$\mathbf{ipAE}$ ($\AA$)', fontsize=LABEL_SIZE)
                  ax.set_xlabel(r'$\mathbf{0.2pTM+0.8ipTM}$', fontsize=LABEL_SIZE)
                  ax.tick_params(axis='both', which='major', labelsize=TICK_SIZE, length=6, width=1.7)
                  ax.tick_params(axis='x', which='minor', length=4, width=1.5)
                  
-                 # Bold tick labels
                  for label in ax.get_xticklabels() + ax.get_yticklabels():
                      label.set_fontweight('bold')
                      
-                 # Ticks matching legacy
                  ax.yaxis.set_major_locator(ticker.MultipleLocator(6))
                  ax.xaxis.set_major_locator(ticker.MultipleLocator(0.2))
                  ax.xaxis.set_minor_locator(ticker.MultipleLocator(0.1))
@@ -634,15 +514,13 @@ def _plot_scatter(complexes, source_file, start=1, end=None):
                  ax.set_xlim(0.35, 0.96)
                  ax.set_ylim(5.7, 30)
                  
-                 # Spines
                  for spine in ax.spines.values():
-                     spine.set_linewidth(1.5)
+                    spine.set_linewidth(1.5)
                  
-                 ax.set_title(f'{complex_name}', fontsize=10) # Legacy sets small title?
+                 ax.set_title(f'{complex_name}', fontsize=10)
 
              is_combined = "with_oriSubs" in csv_file
              
-             # Size params
              size = 100
              size_star = 600
              star_edge = 4
@@ -677,10 +555,6 @@ def _plot_scatter(complexes, source_file, start=1, end=None):
                      ax.scatter(x=df[metrics['x']].iloc[-1], y=df[metrics['y']].iloc[-1], 
                                 marker='*', s=size_star, c=[df[plddt_col].iloc[-1]], cmap=cmap, norm=norm,
                                 edgecolor='black', linewidths=star_edge, zorder=10, label='Parental')
-                     # No legend for parental in legacy plot 2? Only colorbar.
-                     # But legacy code line 125 has label='Parental' for plot 2 scatter.
-                     # Legacy doesn't add legend call for plot 2 if special?
-                     # Line 150: if kinase_pep not in special: ax.legend()
                      ax.legend(loc='lower left', fontsize=LEGEND_SIZE)
                  else:
                      ax.scatter(x=df[metrics['x']], y=df[metrics['y']], 
@@ -721,28 +595,16 @@ def _plot_scatter(complexes, source_file, start=1, end=None):
                  setup_axis(ax)
                  
                  # Labelling Top 5 Lowest ipAE
-                 # nsmallest excludes NaN by default.
                  lowest = df.nsmallest(5, metrics['y'])
                  for _, row in lowest.iterrows():
-                     rid = str(row['id'])
-                     # Legacy Label Logic: split('_')[-1].replace('sample', 'des')
-                     # Example ID: "design_001_..." -> "des_001"? 
-                     # Legacy ID was usually "..._sample_1...".
-                     # Our ID is "design_001_unrelaxed...". 
-                     # split('_')[-1] might be "000" (seed).
-                     # Standard ID: design_001 (from af2score).
-                     # Let's try to grab "001" (Rank 1).
-                     # If ID is "design_001_...", split('_')[1] is "001".
-                     # If ID is "26_tec_srctd_des_26", split('_') might be complex.
-                     # Let's just use the full ID or a short hash?
-                     # Let's try flexible shortening.
-                     label = rid
-                     if "design" in rid:
-                          idx = rid.find("design")
-                          parts = rid[idx:].split("_")
-                          if len(parts) > 1: label = f"d{parts[1]}" # d001
+                    rid = str(row['id'])
+                    label = rid
+                    if "design" in rid:
+                        idx = rid.find("design")
+                        parts = rid[idx:].split("_")
+                        if len(parts) > 1: label = f"d{parts[1]}" # d001
                      
-                     plt.text(row[metrics['x']], row[metrics['y']], label, fontsize=10, fontweight='bold')
+                    plt.text(row[metrics['x']], row[metrics['y']], label, fontsize=10, fontweight='bold')
                  
                  figname3 = os.path.join(output_dir, f"{complex_name}_scatter_pTM-ipTM_vs_ipAE_vs_pLDDT_labelled.png")
                  plt.savefig(figname3, dpi=300, bbox_inches='tight')
@@ -755,14 +617,10 @@ def _plot_scatter(complexes, source_file, start=1, end=None):
 
 def _plot_ipsae(complexes, source_file, start=1, end=None):
     """
-    Generates ipSAE correlation plots matching Legacy Scripts 37 & 38.
+    Generates ipSAE correlation plots
     """
     print("Checking for ipSAE data to plot...")
     
-    # Import locally to avoid top-level dependency issues if scipy not installed
-    from scipy import stats
-    
-    # Config matching legacy script
     dot_size = 105
     fig_size = (16, 18)
     TITLE_SIZE = 22
@@ -797,137 +655,125 @@ def _plot_ipsae(complexes, source_file, start=1, end=None):
         for spine in ax.spines.values(): spine.set_linewidth(1.7)
 
     for complex_name in complexes:
-         work_home = os.getcwd()
-         # Check for the ipSAE csv
-         # It's usually the same merged csv but with extra cols, or specific "with_ipSAEmin" file?
-         # Script 35 saves as: ..._with_ipSAEmin_{P}_{D}.csv
-         # But the user might rename it or merge it.
-         # Let's search for any CSV containing 'ipSAE' in filename OR in columns.
+        work_home = os.getcwd()
+        data_dir = os.path.join(work_home, "af2_init_guess", "data", complex_name)
+        patterns = [
+            os.path.join(data_dir, f"*_with_ipSAEmin_*.csv"),
+            os.path.join(data_dir, f"{complex_name}_merged_scores_pTM-ipTM_with_oriSubs.csv")
+        ]
          
-         data_dir = os.path.join(work_home, "af2_init_guess", "data", complex_name)
-         patterns = [
-             os.path.join(data_dir, f"*_with_ipSAEmin_*.csv"),
-             os.path.join(data_dir, f"{complex_name}_merged_scores_pTM-ipTM_with_oriSubs.csv")
-         ]
-         
-         target_csv = None
-         for p in patterns:
-             matches = glob.glob(p)
-             if matches:
-                 # Check columns
-                 for m in matches:
-                     try:
-                         d = pd.read_csv(m)
-                         if 'ipSAE' in d.columns or 'ipSAE_min' in d.columns:
-                             target_csv = m
-                             break
-                     except: pass
-             if target_csv: break
+        target_csv = None
+        for p in patterns:
+            matches = glob.glob(p)
+            if matches:
+                # Check columns
+                for m in matches:
+                    try:
+                        d = pd.read_csv(m)
+                        if 'ipSAE' in d.columns or 'ipSAE_min' in d.columns:
+                            target_csv = m
+                            break
+                    except: pass
+            if target_csv: break
              
-         if not target_csv:
-             continue
+        if not target_csv:
+            continue
              
-         print(f"Generating ipSAE plots for {complex_name}...")
-         df = pd.read_csv(target_csv)
-         output_dir = os.path.dirname(target_csv)
-         base_name = os.path.splitext(os.path.basename(target_csv))[0]
+        print(f"Generating ipSAE plots for {complex_name}...")
+        df = pd.read_csv(target_csv)
+        output_dir = os.path.dirname(target_csv)
+        base_name = os.path.splitext(os.path.basename(target_csv))[0]
          
-         # Rename cols for plotting convenience (Legacy Script 37)
-         mapper = {'pae_interaction': 'ipAE', 'plddt_binder': 'pLDDT_peptide'}
-         df = df.rename(columns={k:v for k,v in mapper.items() if k in df.columns})
+        mapper = {'pae_interaction': 'ipAE', 'plddt_binder': 'pLDDT_peptide'}
+        df = df.rename(columns={k:v for k,v in mapper.items() if k in df.columns})
          
-         # Define plotting tasks: (y_metric, filename_suffix)
-         tasks = []
-         if 'ipSAE' in df.columns: tasks.append(('ipSAE', 'ipSAE'))
-         if 'ipSAE_min' in df.columns: tasks.append(('ipSAE_min', 'ipSAEmin'))
+        # Define plotting tasks: (y_metric, filename_suffix)
+        tasks = []
+        if 'ipSAE' in df.columns: tasks.append(('ipSAE', 'ipSAE'))
+        if 'ipSAE_min' in df.columns: tasks.append(('ipSAE_min', 'ipSAEmin'))
          
-         for y_metric, suffix in tasks:
-             # Configuration
-             pairs_config = [
+        for y_metric, suffix in tasks:
+            # Configuration
+            pairs_config = [
                 ('ipTM', y_metric),           
                 ('pTM_ipTM', y_metric),       
                 ('ipAE', y_metric),            
                 ('pLDDT_peptide', y_metric),  
                 ('pLDDT_peptide', 'pTM_ipTM'),
                 ('pLDDT_peptide', 'ipTM')     
-             ]
+            ]
              
-             # Limits & Ticks
-             axis_limits = {
+            # Limits & Ticks
+            axis_limits = {
                 'ipSAE': (-0.01, 0.85), 'ipSAE_min': (-0.01, 0.85),
                 'ipAE': (6, 30),
                 'pLDDT_peptide': (25, 82),
                 'ipTM': (0.25, 0.99), 'pTM_ipTM': (0.25, 0.99)
-             }
-             axis_ticks = {
+            }
+            axis_ticks = {
                 'ipSAE': {'major': np.arange(0, 0.9, 0.2), 'minor': np.arange(0, 0.9, 0.1)},
                 'ipSAE_min': {'major': np.arange(0, 0.9, 0.2), 'minor': np.arange(0, 0.9, 0.1)},
                 'ipAE': {'major': np.arange(6, 31, 6), 'minor': np.arange(6, 31, 3)},
                 'pLDDT_peptide': {'major': np.arange(40, 81, 20), 'minor': np.arange(30, 81, 10)},
                 'ipTM': {'major': np.arange(0.3, 1.1, 0.2), 'minor': np.arange(0.3, 1.1, 0.1)},
                 'pTM_ipTM': {'major': np.arange(0.3, 1.1, 0.2), 'minor': np.arange(0.3, 1.1, 0.1)}
-             }
+            }
              
-             fig, axes = plt.subplots(3, 2, figsize=fig_size)
-             axes = axes.flatten()
-             stats_data = []
+            fig, axes = plt.subplots(3, 2, figsize=fig_size)
+            axes = axes.flatten()
+            stats_data = []
              
-             for i, (yy, xx) in enumerate(pairs_config):
-                 if yy not in df.columns or xx not in df.columns:
-                     continue
+            for i, (yy, xx) in enumerate(pairs_config):
+                if yy not in df.columns or xx not in df.columns:
+                    continue
                      
-                 ax = axes[i]
-                 valid = df.dropna(subset=[xx, yy])
-                 x_data = pd.to_numeric(valid[xx], errors='coerce')
-                 y_data = pd.to_numeric(valid[yy], errors='coerce')
+                ax = axes[i]
+                valid = df.dropna(subset=[xx, yy])
+                x_data = pd.to_numeric(valid[xx], errors='coerce')
+                y_data = pd.to_numeric(valid[yy], errors='coerce')
                  
-                 # Calc Stats
-                 slope, intercept, r2, r = get_stats(x_data, y_data)
-                 stats_data.append({'Pair': f'{yy} vs {xx}', 'R_squared': r2, 'Pearson_r': r})
+                # Calc Stats
+                slope, intercept, r2, r = get_stats(x_data, y_data)
+                stats_data.append({'Pair': f'{yy} vs {xx}', 'R_squared': r2, 'Pearson_r': r})
                  
-                 # Plot
-                 ax.scatter(x_data, y_data, alpha=0.6, edgecolors='w', s=dot_size, color='blue')
+                # Plot
+                ax.scatter(x_data, y_data, alpha=0.6, edgecolors='w', s=dot_size, color='blue')
                  
-                 # Line
-                 if len(x_data) > 1:
-                     lx = np.array([x_data.min(), x_data.max()])
-                     ax.plot(lx, slope * lx + intercept, color='red', linewidth=2, linestyle='--')
+                # Line
+                if len(x_data) > 1:
+                    lx = np.array([x_data.min(), x_data.max()])
+                    ax.plot(lx, slope * lx + intercept, color='red', linewidth=2, linestyle='--')
                  
-                 # Text
-                 txt = f'$\mathbf{{r = {r:.3f}}}$'
-                 ax.text(0.05, 0.96, txt, transform=ax.transAxes, fontsize=TEXT_SIZE, fontweight='bold',
+                # Text
+                txt = f'$\mathbf{{r = {r:.3f}}}$'
+                ax.text(0.05, 0.96, txt, transform=ax.transAxes, fontsize=TEXT_SIZE, fontweight='bold',
                         verticalalignment='top', bbox=dict(boxstyle='round', facecolor='white', alpha=0.8, edgecolor='none'))
                  
-                 # Limits
-                 if xx in axis_limits: ax.set_xlim(axis_limits[xx])
-                 if yy in axis_limits: ax.set_ylim(axis_limits[yy])
+                # Limits
+                if xx in axis_limits: ax.set_xlim(axis_limits[xx])
+                if yy in axis_limits: ax.set_ylim(axis_limits[yy])
                  
-                 ax.set_xlabel(xx, fontsize=LABEL_SIZE, fontweight='bold')
-                 ax.set_ylabel(yy, fontsize=LABEL_SIZE, fontweight='bold')
+                ax.set_xlabel(xx, fontsize=LABEL_SIZE, fontweight='bold')
+                ax.set_ylabel(yy, fontsize=LABEL_SIZE, fontweight='bold')
                  
-                 apply_custom_style(ax, axis_ticks.get(xx), axis_ticks.get(yy))
+                apply_custom_style(ax, axis_ticks.get(xx), axis_ticks.get(yy))
                  
-             plt.tight_layout()
-             pname = os.path.join(output_dir, f'{base_name}_plots_all_{suffix}_16_18.png')
-             plt.savefig(pname)
-             plt.close()
+            plt.tight_layout()
+            pname = os.path.join(output_dir, f'{base_name}_plots_all_{suffix}_16_18.png')
+            plt.savefig(pname)
+            plt.close()
              
-             # Save Stats
-             sdf = pd.DataFrame(stats_data)
-             sname = os.path.join(output_dir, f'{base_name}_regression_stats_{suffix}.csv')
-             sdf.to_csv(sname, index=False)
-             print(f"Generated {suffix} plots: {pname}")
+            # Save Stats
+            sdf = pd.DataFrame(stats_data)
+            sname = os.path.join(output_dir, f'{base_name}_regression_stats_{suffix}.csv')
+            sdf.to_csv(sname, index=False)
+            print(f"Generated {suffix} plots: {pname}")
 
 def _plot_scatter_ipsae_colored(complexes, source_file, start=1, end=None):
     """
-    Generates Scatter Plots colored by ipSAE/ipSAE_min (Legacy Scripts 39/40).
+    Generates Scatter Plots colored by ipSAE/ipSAE_min
     """
     print("Generating ipSAE-colored Scatter Plots...")
-    import matplotlib.pyplot as plt
-    import seaborn as sns
-    import pandas as pd
-    import numpy as np
-    import matplotlib.ticker as ticker
     
     # Imports for specific font handling if needed, but we rely on simple name
     plt.rcParams['font.family'] = 'Arial'
@@ -937,151 +783,151 @@ def _plot_scatter_ipsae_colored(complexes, source_file, start=1, end=None):
     LEGEND_SIZE = 14
     
     for complex_name in complexes:
-         work_home = os.getcwd()
-         data_dir = os.path.join(work_home, "af2_init_guess", "data", complex_name)
+        work_home = os.getcwd()
+        data_dir = os.path.join(work_home, "af2_init_guess", "data", complex_name)
          
-         target_csv = None
-         patterns = [
-             os.path.join(data_dir, f"*_with_ipSAEmin_*.csv"),
-             os.path.join(data_dir, f"{complex_name}_merged_scores_pTM-ipTM_with_oriSubs.csv")
-         ]
-         for p in patterns:
-             matches = glob.glob(p)
-             for m in matches:
+        target_csv = None
+        patterns = [
+            os.path.join(data_dir, f"*_with_ipSAEmin_*.csv"),
+            os.path.join(data_dir, f"{complex_name}_merged_scores_pTM-ipTM_with_oriSubs.csv")
+        ]
+        for p in patterns:
+            matches = glob.glob(p)
+            for m in matches:
                 try:
                     d = pd.read_csv(m)
                     if 'ipSAE' in d.columns or 'ipSAE_min' in d.columns:
                         target_csv = m
                         break
                 except: pass
-             if target_csv: break
+            if target_csv: break
              
-         if not target_csv: continue
+        if not target_csv: continue
          
-         output_dir = os.path.dirname(target_csv)
-         try:
-             df = pd.read_csv(target_csv)
+        output_dir = os.path.dirname(target_csv)
+        try:
+            df = pd.read_csv(target_csv)
              
-             metrics = {}
-             if 'ipAE' in df.columns: metrics['y'] = 'ipAE'
-             elif 'pae_interaction' in df.columns: metrics['y'] = 'pae_interaction'
-             else: metrics['y'] = df.columns[7] if len(df.columns) > 7 else None
+            metrics = {}
+            if 'ipAE' in df.columns: metrics['y'] = 'ipAE'
+            elif 'pae_interaction' in df.columns: metrics['y'] = 'pae_interaction'
+            else: metrics['y'] = df.columns[7] if len(df.columns) > 7 else None
              
-             if 'pTM_ipTM' in df.columns: metrics['x'] = 'pTM_ipTM'
-             else: metrics['x'] = None 
+            if 'pTM_ipTM' in df.columns: metrics['x'] = 'pTM_ipTM'
+            else: metrics['x'] = None 
              
-             if not metrics['x'] or not metrics['y']: continue
+            if not metrics['x'] or not metrics['y']: continue
 
-             df[metrics['x']] = pd.to_numeric(df[metrics['x']], errors='coerce')
-             df[metrics['y']] = pd.to_numeric(df[metrics['y']], errors='coerce')
+            df[metrics['x']] = pd.to_numeric(df[metrics['x']], errors='coerce')
+            df[metrics['y']] = pd.to_numeric(df[metrics['y']], errors='coerce')
              
-             plot_configs = []
-             if "ipSAE" in df.columns:
-                 plot_configs.append({
-                     "col": "ipSAE", "vmin": 0.2, "vmax": 0.8, "label": r"$\mathbf{ipSAE}$", "suffix": "vs_ipSAE"
+            plot_configs = []
+            if "ipSAE" in df.columns:
+                plot_configs.append({
+                    "col": "ipSAE", "vmin": 0.2, "vmax": 0.8, "label": r"$\mathbf{ipSAE}$", "suffix": "vs_ipSAE"
                  })
-             if "ipSAE_min" in df.columns:
-                 plot_configs.append({
-                     "col": "ipSAE_min", "vmin": 0.05, "vmax": 0.35, "label": r"$\mathbf{ipSAE}\_\mathbf{min}$", "suffix": "vs_ipSAE_min"
+            if "ipSAE_min" in df.columns:
+                plot_configs.append({
+                    "col": "ipSAE_min", "vmin": 0.05, "vmax": 0.35, "label": r"$\mathbf{ipSAE}\_\mathbf{min}$", "suffix": "vs_ipSAE_min"
                  })
                  
-             if not plot_configs: continue
+            if not plot_configs: continue
              
-             def setup_axis(ax):
-                 ax.set_ylabel(r'$\mathbf{ipAE}$ ($\AA$)', fontsize=LABEL_SIZE)
-                 ax.set_xlabel(r'$\mathbf{0.2pTM+0.8ipTM}$', fontsize=LABEL_SIZE)
-                 ax.tick_params(axis='both', which='major', labelsize=TICK_SIZE, length=6, width=1.7)
-                 ax.tick_params(axis='x', which='minor', length=4, width=1.5)
-                 for label in ax.get_xticklabels() + ax.get_yticklabels(): label.set_fontweight('bold')
-                 ax.yaxis.set_major_locator(ticker.MultipleLocator(6))
-                 ax.xaxis.set_major_locator(ticker.MultipleLocator(0.2))
-                 ax.xaxis.set_minor_locator(ticker.MultipleLocator(0.1))
-                 ax.set_xlim(0.35, 0.96)
-                 ax.set_ylim(5.7, 30)
-                 for spine in ax.spines.values(): spine.set_linewidth(1.5)
-                 ax.set_title(f'{complex_name}', fontsize=10)
+            def setup_axis(ax):
+                ax.set_ylabel(r'$\mathbf{ipAE}$ ($\AA$)', fontsize=LABEL_SIZE)
+                ax.set_xlabel(r'$\mathbf{0.2pTM+0.8ipTM}$', fontsize=LABEL_SIZE)
+                ax.tick_params(axis='both', which='major', labelsize=TICK_SIZE, length=6, width=1.7)
+                ax.tick_params(axis='x', which='minor', length=4, width=1.5)
+                for label in ax.get_xticklabels() + ax.get_yticklabels(): label.set_fontweight('bold')
+                ax.yaxis.set_major_locator(ticker.MultipleLocator(6))
+                ax.xaxis.set_major_locator(ticker.MultipleLocator(0.2))
+                ax.xaxis.set_minor_locator(ticker.MultipleLocator(0.1))
+                ax.set_xlim(0.35, 0.96)
+                ax.set_ylim(5.7, 30)
+                for spine in ax.spines.values(): spine.set_linewidth(1.5)
+                ax.set_title(f'{complex_name}', fontsize=10)
 
-             size = 100
-             size_star = 600
-             star_edge = 4
-             is_combined = "with_oriSubs" in target_csv or "combined" in target_csv
+            size = 100
+            size_star = 600
+            star_edge = 4
+            is_combined = "with_oriSubs" in target_csv or "combined" in target_csv
 
-             for cfg in plot_configs:
-                 col = cfg['col']
-                 df[col] = pd.to_numeric(df[col], errors='coerce')
-                 valid_df = df.dropna(subset=[metrics['x'], metrics['y'], col])
-                 if valid_df.empty: continue
+            for cfg in plot_configs:
+                col = cfg['col']
+                df[col] = pd.to_numeric(df[col], errors='coerce')
+                valid_df = df.dropna(subset=[metrics['x'], metrics['y'], col])
+                if valid_df.empty: continue
                  
-                 # Plot 2: Colored
-                 fig, ax = plt.subplots(figsize=(7, 6))
-                 cmap = plt.get_cmap('turbo_r')
-                 norm = plt.Normalize(vmin=cfg['vmin'], vmax=cfg['vmax'])
+                # Plot 2: Colored
+                fig, ax = plt.subplots(figsize=(7, 6))
+                cmap = plt.get_cmap('turbo_r')
+                norm = plt.Normalize(vmin=cfg['vmin'], vmax=cfg['vmax'])
                  
-                 if is_combined:
-                     ax.scatter(x=valid_df[metrics['x']][:-1], y=valid_df[metrics['y']][:-1], 
+                if is_combined:
+                    ax.scatter(x=valid_df[metrics['x']][:-1], y=valid_df[metrics['y']][:-1], 
                                 c=valid_df[col][:-1], cmap=cmap, norm=norm, s=size)
                      
-                     last_idx = df.index[-1]
-                     if last_idx in valid_df.index:
-                         row = valid_df.loc[last_idx]
-                         ax.scatter(x=row[metrics['x']], y=row[metrics['y']], 
+                    last_idx = df.index[-1]
+                    if last_idx in valid_df.index:
+                        row = valid_df.loc[last_idx]
+                        ax.scatter(x=row[metrics['x']], y=row[metrics['y']], 
                                     marker='*', s=size_star, c=[row[col]], cmap=cmap, norm=norm,
                                     edgecolor='black', linewidths=star_edge, zorder=10, label='Parental')
-                         ax.legend(loc='lower left', fontsize=LEGEND_SIZE)
-                 else:
-                     ax.scatter(x=valid_df[metrics['x']], y=valid_df[metrics['y']], 
+                        ax.legend(loc='lower left', fontsize=LEGEND_SIZE)
+                else:
+                    ax.scatter(x=valid_df[metrics['x']], y=valid_df[metrics['y']], 
                                 c=valid_df[col], cmap=cmap, norm=norm, s=size)
                  
-                 sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-                 cbar = plt.colorbar(sm, ax=ax)
-                 cbar.set_label(cfg['label'], fontsize=LABEL_SIZE)
-                 cbar.ax.tick_params(labelsize=19)
-                 for l in cbar.ax.get_yticklabels(): l.set_fontweight('bold')
+                sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+                cbar = plt.colorbar(sm, ax=ax)
+                cbar.set_label(cfg['label'], fontsize=LABEL_SIZE)
+                cbar.ax.tick_params(labelsize=19)
+                for l in cbar.ax.get_yticklabels(): l.set_fontweight('bold')
                  
-                 setup_axis(ax)
-                 figname = os.path.join(output_dir, f"{complex_name}_scatter_pTM-ipTM_vs_pae-inter_{cfg['suffix']}_withOriSubs.png")
-                 plt.savefig(figname, dpi=300, bbox_inches='tight')
-                 plt.close()
+                setup_axis(ax)
+                figname = os.path.join(output_dir, f"{complex_name}_scatter_pTM-ipTM_vs_pae-inter_{cfg['suffix']}_withOriSubs.png")
+                plt.savefig(figname, dpi=300, bbox_inches='tight')
+                plt.close()
                  
-                 # Plot 3: Labelled
-                 fig, ax = plt.subplots(figsize=(7, 6))
+                # Plot 3: Labelled
+                fig, ax = plt.subplots(figsize=(7, 6))
                  
-                 if is_combined:
-                     ax.scatter(x=valid_df[metrics['x']][:-1], y=valid_df[metrics['y']][:-1], 
+                if is_combined:
+                    ax.scatter(x=valid_df[metrics['x']][:-1], y=valid_df[metrics['y']][:-1], 
                                 c=valid_df[col][:-1], cmap=cmap, norm=norm, s=size)
-                     last_idx = df.index[-1]
-                     if last_idx in valid_df.index:
-                         row = valid_df.loc[last_idx]
-                         ax.scatter(x=row[metrics['x']], y=row[metrics['y']], 
+                    last_idx = df.index[-1]
+                    if last_idx in valid_df.index:
+                        row = valid_df.loc[last_idx]
+                        ax.scatter(x=row[metrics['x']], y=row[metrics['y']], 
                                     marker='*', s=size_star, c=[row[col]], cmap=cmap, norm=norm,
                                     edgecolor='black', linewidths=star_edge, zorder=10, label='Parental')
-                         ax.legend(loc='lower left', fontsize=LEGEND_SIZE)
-                 else:
-                     ax.scatter(x=valid_df[metrics['x']], y=valid_df[metrics['y']], 
+                        ax.legend(loc='lower left', fontsize=LEGEND_SIZE)
+                else:
+                    ax.scatter(x=valid_df[metrics['x']], y=valid_df[metrics['y']], 
                                 c=valid_df[col], cmap=cmap, norm=norm, s=size)
                                 
-                 cbar = plt.colorbar(sm, ax=ax)
-                 cbar.set_label(cfg['label'], fontsize=LABEL_SIZE)
-                 cbar.ax.tick_params(labelsize=19)
-                 for l in cbar.ax.get_yticklabels(): l.set_fontweight('bold')
+                cbar = plt.colorbar(sm, ax=ax)
+                cbar.set_label(cfg['label'], fontsize=LABEL_SIZE)
+                cbar.ax.tick_params(labelsize=19)
+                for l in cbar.ax.get_yticklabels(): l.set_fontweight('bold')
                  
-                 setup_axis(ax)
+                setup_axis(ax)
                  
-                 lowest = valid_df.nsmallest(5, metrics['y'])
-                 for _, row in lowest.iterrows():
-                     rid = str(row['id'])
-                     label = rid
-                     if "design" in rid:
-                          idx = rid.find("design")
-                          parts = rid[idx:].split("_")
-                          if len(parts) > 1: label = f"d{parts[1]}"
-                     plt.text(row[metrics['x']], row[metrics['y']], label, fontsize=10, fontweight='bold')
+                lowest = valid_df.nsmallest(5, metrics['y'])
+                for _, row in lowest.iterrows():
+                    rid = str(row['id'])
+                    label = rid
+                    if "design" in rid:
+                        idx = rid.find("design")
+                        parts = rid[idx:].split("_")
+                        if len(parts) > 1: label = f"d{parts[1]}"
+                    plt.text(row[metrics['x']], row[metrics['y']], label, fontsize=10, fontweight='bold')
                      
-                 figname_lbl = os.path.join(output_dir, f"{complex_name}_scatter_pTM-ipTM_vs_pae-inter_{cfg['suffix']}_labelled_withOriSubs.png")
-                 plt.savefig(figname_lbl, dpi=300, bbox_inches='tight')
-                 plt.close()
+                figname_lbl = os.path.join(output_dir, f"{complex_name}_scatter_pTM-ipTM_vs_pae-inter_{cfg['suffix']}_labelled_withOriSubs.png")
+                plt.savefig(figname_lbl, dpi=300, bbox_inches='tight')
+                plt.close()
                  
-                 print(f"Generated {cfg['suffix']} scatter plots for {complex_name}")
+                print(f"Generated {cfg['suffix']} scatter plots for {complex_name}")
                  
-         except Exception as e:
-             print(f"Error generating ipSAE color plots for {complex_name}: {e}")
+        except Exception as e:
+            print(f"Error generating ipSAE color plots for {complex_name}: {e}")

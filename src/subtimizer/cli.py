@@ -12,9 +12,7 @@ from subtimizer.workflow.reporting import run_reporting
 @click.group()
 @click.version_option()
 def main():
-    """Subtimizer: Structure-Guided Design of Kinase Peptide Substrates.
-
-    Yekeen et al. bioRxiv (2025)
+    """Subtimizer: Structure-Guided Design of Kinase Peptide Substrates. Yekeen et al. bioRxiv (2025).
     """
     pass
 
