@@ -29,6 +29,7 @@ license-files = ["LICENSE"]
 
 [project.urls]
 Homepage = "https://github.com/abeebyekeen/subtimizer"
+Publication = "https://doi.org/10.1101/2025.07.04.663216"
 
 [project.scripts]
 subtimizer = "subtimizer.cli:main"
