@@ -8,7 +8,7 @@
 
 ---
 
-### A. Contents
+## A. Contents
 
 A. [Contents](#A-contents)   
 B. [Overview](#B-overview)   
@@ -54,8 +54,9 @@ The workflow uses SLURM job scripts generated from templates. To customize these
 
 ## E. Installation
 
-### 1. Set Up a Conda/Mamba Environment
+### 1. Set Up Conda/Mamba Environments
 
+#### Step A: Set Up Main Environment
 Create a environment named `subtimizer_env` with Python>=3.9:
 
 ```bash
@@ -66,12 +67,11 @@ mamba create -n subtimizer_env python=3.9 -y
 mamba activate subtimizer_env
 ```
 
-#### Step C: Set Up Worker Environments (Critical)
+#### Step B: Set Up Worker Environments
 AlphaFold and ProteinMPNN run in separate environments to avoid dependency conflicts. Create these environments using the provided YAML files in the repository root.
 
 ```bash
 mamba env create -f af2_des_env.yaml
-
 mamba env create -f mpnn_des_env.yaml
 ```
 
@@ -83,19 +83,19 @@ While in the `subtimizer_env` environment, you can install the package via PyPI 
 pip install subtimizer
 ```
 
-**Option B: Install from Source (For Development)**
+**Option B: Install from Source**
 Use this if you want to modify the code or templates.
 ```bash
 git clone https://github.com/abeebyekeen/subtimizer.git
 cd subtimizer
-pip install -e .
+pip install .
 ```
 
-3.  **Verify Installation**:
+### 3. Verify Installation
 
-    ```bash
-    subtimizer --help
-    ```
+```bash
+subtimizer --help
+```
 
 
 ## F. Usage
@@ -114,6 +114,11 @@ Most subtimizer commands (`fold`, `design`, `validate`, `fix-pdb`) accept the fo
 
 ### 1. Setup Project Structure
 
+Change into your working directory:
+```bash
+cd examples
+```
+
 Initialize the directory structure for your kinase complexes.
 
 **Input**: A file (e.g., `example_list_of_complexes.dat`) containing the list of folder names/complexes.
@@ -124,27 +129,22 @@ SGK1_1akt1tide
 TEC_srctide
 ```
 
-Change into your working directory:
-```bash
-cd examples
-```
-
-And create this file using:
+For example, you can create this file using:
 ```bash
 echo -e "AKT1_2akt1tide\nALK_axltide\nSGK1_1akt1tide\nTEC_srctide" > example_list_of_complexes.dat
 ```
 
 
-**Command**:
+Once you have your list of complexes, you can initialize the project structure using:
 ```bash
 subtimizer setup --file example_list_of_complexes.dat --type initial
 ```
-This creates the project directories and necessary subfolders for AlphaFold.
+This creates the project directories and necessary subfolders that Subtimizer expects to find.
 
 ### 2. Run AlphaFold-Multimer
 Launch AlphaFold-Multimer for the listed complexes.
 
-**Important**: This step expects a FASTA file (e.g., `AKT1_2akt1tide.fasta`) to exist inside each complex folder. See the `examples` folder for an example of how to prepare the FASTA files.
+>**Note**: This step expects a FASTA file (e.g., `AKT1_2akt1tide.fasta`) to exist inside each complex folder. See the `examples` folder for an example of how to prepare the FASTA files.
 
 #### Option A: Batch Mode (Default)
 Submits individual jobs for each complex using `fold_template.sh`.
@@ -189,15 +189,14 @@ subtimizer design --file example_list_of_complexes.dat --mode parallel --max-job
 
 Analyze sequence recovery.
 
-**Command**:
-Generates:
-*   Combined FASTA files (`all_design.fa`)
-*   Sequence Logos (`*_seqlogo.png`)
-*   Sequence Recovery Plots (`sequence_recovery_stripplot.png` and `.csv`)
-
 ```bash
 subtimizer analyze --file example_list_of_complexes.dat
 ```
+
+> The `analyze` command generates:
+> * Combined FASTA files (`all_design.fa`)
+> * Sequence Logos (`*_seqlogo.png`)
+> * Sequence Recovery Plots (`sequence_recovery_stripplot.png` and `.csv`)
 
 ### 5. Sequence Clustering
 
@@ -209,7 +208,7 @@ subtimizer cluster --file example_list_of_complexes.dat
 
 ### 6. Preparing kinase-peptide (designed) for folding
 
-Prepare sequences for AlphaFold-Multimer folding.
+Prepare sequences for folding with AlphaFold-Multimer.
 
 ```bash
 subtimizer prep-fold --file example_list_of_complexes.dat
@@ -219,7 +218,7 @@ subtimizer prep-fold --file example_list_of_complexes.dat
 
 >Note: The version of proteinMPNN used in this work does not generate pdbs. Hence the need for post-design folding.
 
->However, with the [newer version (and LigandMPNN)](https://github.com/dauparas/LigandMPNN) which generates structures of designed sequences, this step may not be necessary.
+>However, with the [newer version/LigandMPNN](https://github.com/dauparas/LigandMPNN) which generates structures of designed sequences, this step may not be necessary.
 
 ##### Option A: Batch Mode (Default)
 Run on a single node.
@@ -234,13 +233,16 @@ subtimizer fold --file example_list_of_complexes.dat --stage validation --mode p
 ```
 
 > **Tip for Multi-Node Parallelism**: To scale up to multiple nodes (e.g., 4 nodes), launch the parallel command 4 times with different ranges:
-> 1. `subtimizer fold ... --start 1 --end 2` (Node 1)
-> 2. `subtimizer fold ... --start 3 --end 4` (Node 2)
-> ... and so on. Note: This requires manually creating different SLURM jobs or running from different interactive sessions.
+>1. `subtimizer fold ... --start 1 --end 2` (Node 1)
+>2. `subtimizer fold ... --start 3 --end 4` (Node 2)
+>... and so on. 
+>**Note**: This requires manually creating different SLURM jobs or running from different interactive sessions.
 
 ### 8. Prepare PDBs for AF2 initial guess
 
->Note: af2_init guess has two requirements for the input pdb * the binder (substrate) has to be the first chain * no overlapping residue numbers between chains
+>**Note**: af2_init guess has two requirements for the input pdb:
+>1. the binder (substrate) has to be the first chain
+>2. no overlapping residue numbers between chains
 
 ```bash
 subtimizer fix-pdb --file example_list_of_complexes.dat
@@ -248,30 +250,30 @@ subtimizer fix-pdb --file example_list_of_complexes.dat
 
 ### 9. Validation (AF2 Initial Guess)
 
-Run AlphaFold-based validation with initial guess.
+Run AlphaFold with initial guess.
 
-> **Configuration**: This step requires the path to the `af2_initial_guess` code (specifically `predict.py`).
-> You can provide this path via the `--binder-path` argument or the `DL_BINDER_DESIGN_PATH` environment variable.
->
-> **Setting the Environment Variable**:
+> **Configuration**: This step requires the path to the `af2_initial_guess` code (specifically `predict.py`). You can provide this path via the `--binder-path` argument or the `DL_BINDER_DESIGN_PATH` environment variable.
+
+> You can set the environment variable as follows:
 > ```bash
 > export DL_BINDER_DESIGN_PATH="/path/to/dl_binder_design/af2_initial_guess/predict.py"
 > ```
 
+**Command**:
 ```bash
 subtimizer validate --file example_list_of_complexes.dat --binder-path /path/to/dl_binder_design/af2_initial_guess/predict.py
 ```
 
 ### 10. Reporting
 
-Generates final reports, including:
-*   Merged score CSVs with weighted `pTM_ipTM` metric (`0.2*pTM + 0.8*ipTM`).
-*   Swarm plots of validation metrics.
-*   Data is copied to `af2_init_guess/data/` for easy access.
-
 ```bash
 subtimizer report --file example_list_of_complexes.dat
 ```
+
+> This `report` command generates final reports, including:
+> * Merged score CSVs with weighted `pTM_ipTM` metric (`0.2*pTM + 0.8*ipTM`).
+> * Swarm plots of validation metrics.
+> * Data is copied to `af2_init_guess/data/` for easy access.
 
 ### 11. Workflow for Original (Parental) Substrates
 
