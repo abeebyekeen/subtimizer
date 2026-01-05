@@ -235,7 +235,8 @@ subtimizer fold --file example_list_of_complexes.dat --stage validation --mode p
 > **Tip for Multi-Node Parallelism**: To scale up to multiple nodes (e.g., 4 nodes), launch the parallel command 4 times with different ranges:
 >1. `subtimizer fold ... --start 1 --end 2` (Node 1)
 >2. `subtimizer fold ... --start 3 --end 4` (Node 2)
->... and so on. 
+>... and so on.
+
 >**Note**: This requires manually creating different SLURM jobs or running from different interactive sessions.
 
 ### 8. Prepare PDBs for AF2 initial guess
@@ -275,16 +276,16 @@ subtimizer report --file example_list_of_complexes.dat
 > * Swarm plots of validation metrics.
 > * Data is copied to `af2_init_guess/data/` for easy access.
 
-### 11. Workflow for Original (Parental) Substrates
+### 11. Workflow for Parental Substrates
 
-To process the parental substrates (Legacy Steps 16-17), use the `setup --type original` command with the standard workflow tools.
+To process the parental substrates, use the `setup --type original` command with the standard `subtimizer` workflow tools as described in the previous sections.
 
 1.  **Setup**: Creates `original_subs` folder and prepares files.
     ```bash
     subtimizer setup --file example_list_of_complexes.dat --type original
     ```
 
-2.  **Process**: Run commands pointing to the new files.
+2.  **Process**: Run commands on the parental substrates.
     ```bash
     cd original_subs
     # Fix PDBs
@@ -306,7 +307,7 @@ To process the parental substrates (Legacy Steps 16-17), use the `setup --type o
 
 ### 12. ipSAE Evaluation
 
-Perform interface-based Structure-Activity Relationship (ipSAE) analysis on the folded structures.
+Perform a secondary interface evaluation on the folded structures using the ipSAE metric.
 
 1. **Prerequisite**: Download [ipSAE](https://github.com/dunbracklab/IPSAE) and add it to your PATH:
    ```bash
@@ -316,13 +317,14 @@ Perform interface-based Structure-Activity Relationship (ipSAE) analysis on the 
 2. **Run ipSAE Calculation**:
    This command submits a SLURM job to calculate ipSAE metrics for all structures (designed and parental).
    ```bash
-   subtimizer ipsae --file example_list_of_complexes.dat --max-jobs 16
+   subtimizer ipsae --file example_list_of_complexes.dat --max-jobs 8
    ```
-   *   Supports list slicing: `subtimizer ipsae --file list.dat --start 1 --end 5`
-   *   Arguments: `--pae-cutoff` (default: 15), `--dist-cutoff` (default: 15).
+   The `ipsae` command supports:
+   *   list slicing: `subtimizer ipsae --file list.dat --start 1 --end 5`
+   *   ipSAE cutoffs: `--pae-cutoff` (default: 15), `--dist-cutoff` (default: 15).
 
 3. **Generate Final Reports**:
-   Run the report command again to generate ipSAE-specific plots (Regression and Colored Scatter plots).
+   Run the report command again to generate ipSAE-specific plots (Regression and Scatter plots).
    ```bash
    subtimizer report --file example_list_of_complexes.dat
    ```
