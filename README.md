@@ -3,7 +3,7 @@
 **A Computational Workflow for Structure-Guided Design of Potent and Selective Kinase Peptide Substrates**
 
 [![DOI](https://zenodo.org/badge/doi/10.1021/acs.jcim.5c02430.svg?style=svg)](https://doi.org/10.1021/acs.jcim.5c02430)
-[![DOI](https://zenodo.org/badge/doi/10.1101/2025.07.04.663216.svg?style=svg)](http://dx.doi.org/10.1101/2025.07.04.663216)
+# [![DOI](https://zenodo.org/badge/doi/10.1101/2025.07.04.663216.svg?style=svg)](http://dx.doi.org/10.1101/2025.07.04.663216)
 [![PyPI version](https://badge.fury.io/py/subtimizer.svg)](https://badge.fury.io/py/subtimizer)
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/abeebyekeen/subtimizer?style=flat-square)](https://github.com/abeebyekeen/subtimizer/releases)
 
@@ -337,5 +337,6 @@ Perform a secondary interface evaluation on the folded structures using the ipSA
 If you use Subtimizer in your work, please cite:
 
 > **Yekeen A.A., Meyer C.J., McCoy M., Posner B., Westover K.D.** A Computational Workflow for Structure-Guided Design of Potent and Selective Kinase Peptide Substrates. *bioRxiv* (2025). [https://doi.org/10.1101/2025.07.04.663216](https://doi.org/10.1101/2025.07.04.663216)
+
 
 
